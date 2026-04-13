@@ -32,6 +32,7 @@ export interface Provider {
     id: string;
     nombre_empresa: string;
     contacto_principal?: string;
+    email_contacto?: string;
     pais_origen?: string;
     sap_bp_id?: string;
     creado_por?: string;
@@ -61,6 +62,7 @@ export interface ProductProspect {
     estado_activo: boolean;
     created_at: string;
     updated_at: string;
+    prioridad?: number;
 }
 
 export interface Attachment {

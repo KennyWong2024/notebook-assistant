@@ -8,6 +8,7 @@ import {
     Loader2, UserPlus, CheckCircle2, User, Power
 } from "lucide-react";
 import { crearUsuario, alternarEstadoUsuario } from "@/actions/usuarios";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function UsuariosPage() {
     const [usuarios, setUsuarios] = useState<Profile[]>([]);
@@ -20,6 +21,14 @@ export default function UsuariosPage() {
     const [successMessage, setSuccessMessage] = useState("");
 
     const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
+
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        user: Profile | null;
+    }>({
+        isOpen: false,
+        user: null,
+    });
 
     const fetchData = async () => {
         try {
@@ -64,18 +73,23 @@ export default function UsuariosPage() {
         }
     };
 
-    const handleToggleEstado = async (userId: string, estadoActual: boolean) => {
-        const accion = estadoActual ? 'desactivar' : 'activar';
-        if (!window.confirm(`¿Estás seguro de que deseas ${accion} a este colaborador?`)) return;
+    const initiateToggle = (user: Profile) => {
+        setConfirmModal({ isOpen: true, user });
+    };
 
-        setIsActionLoading(userId);
+    const executeToggle = async () => {
+        const user = confirmModal.user;
+        if (!user) return;
+
+        setConfirmModal({ isOpen: false, user: null });
+        setIsActionLoading(user.id);
         setError("");
 
-        const result = await alternarEstadoUsuario(userId, estadoActual);
+        const result = await alternarEstadoUsuario(user.id, user.estado_activo);
 
         if (result.success) {
             setUsuarios(usuarios.map(u =>
-                u.id === userId ? { ...u, estado_activo: result.nuevoEstado! } : u
+                u.id === user.id ? { ...u, estado_activo: result.nuevoEstado! } : u
             ));
         } else {
             setError(result.error || "Error al cambiar el estado del usuario.");
@@ -129,13 +143,15 @@ export default function UsuariosPage() {
                     <div className="p-12 text-center text-gray-400 font-medium">No se encontraron colaboradores.</div>
                 ) : (
                     <>
+                        {/* ======================= */}
+                        {/* VISTA MÓVIL             */}
+                        {/* ======================= */}
                         <div className="md:hidden divide-y divide-gray-100">
                             {usuarios.map((user) => (
                                 <div key={user.id} className={`p-5 transition-colors ${user.estado_activo ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/50 grayscale-[30%]'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex items-center space-x-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${user.estado_activo ? "bg-red-50 text-red-600 border-red-100" : "bg-gray-200 text-gray-400 border-gray-300"
-                                                }`}>
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${user.estado_activo ? "bg-red-50 text-red-600 border-red-100" : "bg-gray-200 text-gray-400 border-gray-300"}`}>
                                                 <User className="w-5 h-5" />
                                             </div>
                                             <div>
@@ -153,8 +169,8 @@ export default function UsuariosPage() {
                                             <span>{user.rol}</span>
                                         </span>
                                         <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${user.estado_activo
-                                                ? "bg-green-50 text-green-700 border-green-100"
-                                                : "bg-gray-100 text-gray-500 border-gray-200"
+                                            ? "bg-green-50 text-green-700 border-green-100"
+                                            : "bg-gray-100 text-gray-500 border-gray-200"
                                             }`}>
                                             {user.estado_activo ? "Activo" : "Inactivo"}
                                         </span>
@@ -162,11 +178,11 @@ export default function UsuariosPage() {
 
                                     <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
                                         <button
-                                            onClick={() => handleToggleEstado(user.id, user.estado_activo)}
+                                            onClick={() => initiateToggle(user)}
                                             disabled={isActionLoading === user.id}
                                             className={`text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-all ${user.estado_activo
-                                                    ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
-                                                    : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-100"
+                                                ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
+                                                : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-100"
                                                 }`}
                                         >
                                             {isActionLoading === user.id ? (
@@ -183,6 +199,9 @@ export default function UsuariosPage() {
                             ))}
                         </div>
 
+                        {/* ======================= */}
+                        {/* VISTA ESCRITORIO        */}
+                        {/* ======================= */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[600px]">
                                 <thead>
@@ -210,19 +229,19 @@ export default function UsuariosPage() {
                                             </td>
                                             <td className="p-5 text-center">
                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-black uppercase tracking-tighter border ${user.estado_activo
-                                                        ? "bg-green-50 text-green-700 border-green-100"
-                                                        : "bg-gray-100 text-gray-500 border-gray-200"
+                                                    ? "bg-green-50 text-green-700 border-green-100"
+                                                    : "bg-gray-100 text-gray-500 border-gray-200"
                                                     }`}>
                                                     {user.estado_activo ? "Activo" : "Inactivo"}
                                                 </span>
                                             </td>
                                             <td className="p-5 text-right">
                                                 <button
-                                                    onClick={() => handleToggleEstado(user.id, user.estado_activo)}
+                                                    onClick={() => initiateToggle(user)}
                                                     disabled={isActionLoading === user.id}
                                                     className={`p-2.5 rounded-full transition-all flex items-center justify-center ml-auto ${user.estado_activo
-                                                            ? "text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                                            : "text-gray-400 hover:text-green-600 hover:bg-green-50"
+                                                        ? "text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                                        : "text-gray-400 hover:text-green-600 hover:bg-green-50"
                                                         }`}
                                                     title={user.estado_activo ? "Desactivar acceso" : "Reactivar acceso"}
                                                 >
@@ -242,6 +261,24 @@ export default function UsuariosPage() {
                 )}
             </div>
 
+            {/* INTEGRACIÓN DEL MODAL PERSONALIZADO */}
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ isOpen: false, user: null })}
+                onConfirm={executeToggle}
+                title={confirmModal.user?.estado_activo ? "¿Desactivar usuario?" : "¿Reactivar usuario?"}
+                description={
+                    <>
+                        Estás a punto de {confirmModal.user?.estado_activo ? "bloquear" : "restaurar"} el acceso de <strong className="text-gray-900">{confirmModal.user?.nombre_completo}</strong> al sistema.
+                        {confirmModal.user?.estado_activo && " No podrá iniciar sesión."}
+                    </>
+                }
+                variant={confirmModal.user?.estado_activo ? "danger" : "success"}
+                confirmText="Confirmar"
+                cancelText="Cancelar"
+            />
+
+            {/* Modal Nuevo Usuario */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex justify-end md:justify-center md:items-center z-[60] p-0 md:p-4 items-end">
                     <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-10 md:fade-in md:zoom-in-95 duration-200">
