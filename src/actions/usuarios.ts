@@ -69,3 +69,36 @@ export async function alternarEstadoUsuario(userId: string, estadoActual: boolea
         return { success: false, error: error.message };
     }
 }
+
+export async function restablecerContrasenaUsuario(userId: string, newPassword: string) {
+    try {
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            password: newPassword
+        });
+
+        if (error) throw new Error(`Error Auth: ${error.message}`);
+
+        return { success: true };
+
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function cambiarRolUsuario(userId: string, nuevoRol: string) {
+    try {
+        const { error: dbError } = await supabaseAdmin
+            .schema('sourcing')
+            .from('perfiles')
+            .update({ rol: nuevoRol })
+            .eq('id', userId);
+
+        if (dbError) throw new Error(`Error BD: ${dbError.message}`);
+
+        revalidatePath("/admin");
+        return { success: true };
+
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
