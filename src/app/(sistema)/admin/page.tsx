@@ -16,17 +16,14 @@ export default function UsuariosPage() {
     const [activeTab, setActiveTab] = useState<'activos' | 'inactivos'>('activos');
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Estados Modales
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [modalError, setModalError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
-    // Estado Acción de Filas
     const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
     const [isRoleUpdating, setIsRoleUpdating] = useState<string | null>(null);
 
-    // Modales de Confirmación y Reseteo
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; user: Profile | null; }>({ isOpen: false, user: null });
     const [resetPassModal, setResetPassModal] = useState<{ isOpen: boolean; user: Profile | null; }>({ isOpen: false, user: null });
 
@@ -57,17 +54,22 @@ export default function UsuariosPage() {
         setIsSubmitting(true);
         setModalError(""); setSuccessMessage("");
 
-        const result = await crearUsuario(formData);
+        try {
+            const result = await crearUsuario(formData);
 
-        if (result.success) {
-            setSuccessMessage("¡Colaborador creado con éxito!");
-            setTimeout(() => {
-                setIsModalOpen(false);
-                setSuccessMessage("");
-                fetchData();
-            }, 1500);
-        } else {
-            setModalError(result.error || "Ocurrió un error inesperado.");
+            if (result.success) {
+                setSuccessMessage("¡Colaborador creado con éxito!");
+                setTimeout(() => {
+                    setIsModalOpen(false);
+                    setSuccessMessage("");
+                    fetchData();
+                }, 1500);
+            } else {
+                setModalError(result.error || "Ocurrió un error inesperado.");
+            }
+        } catch (err: any) {
+            setModalError("Error de conexión: " + err.message);
+        } finally {
             setIsSubmitting(false);
         }
     };
@@ -80,40 +82,54 @@ export default function UsuariosPage() {
         setIsActionLoading(user.id);
         setError("");
 
-        const result = await alternarEstadoUsuario(user.id, user.estado_activo);
+        try {
+            const result = await alternarEstadoUsuario(user.id, user.estado_activo);
 
-        if (result.success) {
-            // Reflejamos el cambio visualmente pasándolo a la otra pestaña
-            setUsuarios(usuarios.map(u => u.id === user.id ? { ...u, estado_activo: result.nuevoEstado! } : u));
-        } else {
-            setError(result.error || "Error al cambiar el estado del usuario.");
+            if (result.success) {
+                setUsuarios(usuarios.map(u => u.id === user.id ? { ...u, estado_activo: result.nuevoEstado! } : u));
+            } else {
+                setError(result.error || "Error al cambiar el estado del usuario.");
+            }
+        } catch (err: any) {
+            setError("Error de conexión al servidor: " + err.message);
+        } finally {
+            setIsActionLoading(null);
         }
-        setIsActionLoading(null);
     };
 
     const executeResetPassword = async (userId: string, newPassword: string) => {
         setIsSubmitting(true);
-        const result = await restablecerContrasenaUsuario(userId, newPassword);
+        try {
+            const result = await restablecerContrasenaUsuario(userId, newPassword);
 
-        if (result.success) {
-            alert("Contraseña actualizada correctamente.");
-            setResetPassModal({ isOpen: false, user: null });
-        } else {
-            alert(result.error || "Error al actualizar contraseña.");
+            if (result.success) {
+                alert("Contraseña actualizada correctamente.");
+                setResetPassModal({ isOpen: false, user: null });
+            } else {
+                alert(result.error || "Error al actualizar contraseña.");
+            }
+        } catch (err: any) {
+            alert("Error de red: " + err.message);
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         setIsRoleUpdating(userId);
-        const result = await cambiarRolUsuario(userId, newRole);
+        try {
+            const result = await cambiarRolUsuario(userId, newRole);
 
-        if (result.success) {
-            setUsuarios(usuarios.map(u => u.id === userId ? { ...u, rol: newRole as any } : u));
-        } else {
-            alert("Error al cambiar el rol: " + result.error);
+            if (result.success) {
+                setUsuarios(usuarios.map(u => u.id === userId ? { ...u, rol: newRole as any } : u));
+            } else {
+                alert("Error al cambiar el rol: " + result.error);
+            }
+        } catch (err: any) {
+            alert("Fallo de red: " + err.message);
+        } finally {
+            setIsRoleUpdating(null);
         }
-        setIsRoleUpdating(null);
     };
 
     return (
