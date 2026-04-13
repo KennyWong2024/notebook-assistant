@@ -1,4 +1,3 @@
-
 export type Json =
     | string
     | number
@@ -104,4 +103,32 @@ export interface FairAssignment {
     asignado_por?: string;
     estado_activo: boolean;
     created_at: string;
+}
+
+// Tipo estructurado para el Frontend (UI)
+export type ProductoPendiente = {
+    id: string;
+    codigo_trazabilidad: string;
+    nombre_rapido: string | null;
+    precio_referencia: number | null;
+    moneda: string;
+    proveedor: string;
+    feria: string;
+    foto_url: string | null;
+    prioridad: number | null;
+};
+
+// Interfaz exacta que retorna la vista v_pendientes_bandeja desde Supabase
+export interface ViewPendientesBandeja {
+    id: string;
+    codigo_trazabilidad: string;
+    nombre_rapido: string | null;
+    precio_referencia: number | null;
+    moneda: string | null;
+    prioridad: number | null;
+    estado_compra: string;
+    creado_por: string;
+    proveedor: string | null;
+    feria: string | null;
+    foto_url: string | null;
 }
