@@ -1,7 +1,6 @@
 "use server"
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { revalidatePath } from "next/cache"
 
 export async function crearUsuario(formData: FormData) {
     const email = formData.get("email") as string
@@ -36,7 +35,6 @@ export async function crearUsuario(formData: FormData) {
             throw new Error(`Error BD: ${dbError.message}`)
         }
 
-        revalidatePath("/admin")
         return { success: true }
 
     } catch (error: any) {
@@ -55,14 +53,12 @@ export async function alternarEstadoUsuario(userId: string, estadoActual: boolea
             .eq('id', userId);
 
         if (dbError) throw new Error(`Error BD: ${dbError.message}`);
-
         const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-            ban_duration: nuevoEstado ? 'none' : '87600h'
+            ban_duration: nuevoEstado ? 'none' : '876000h'
         });
 
         if (authError) throw new Error(`Error Auth: ${authError.message}`);
 
-        revalidatePath("/admin");
         return { success: true, nuevoEstado };
 
     } catch (error: any) {
@@ -95,7 +91,6 @@ export async function cambiarRolUsuario(userId: string, nuevoRol: string) {
 
         if (dbError) throw new Error(`Error BD: ${dbError.message}`);
 
-        revalidatePath("/admin");
         return { success: true };
 
     } catch (error: any) {
