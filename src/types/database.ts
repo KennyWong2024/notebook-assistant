@@ -133,6 +133,7 @@ export interface ViewPendientesBandeja {
 
 export interface ViewHistorialProducto {
     id: string;
+    id_proveedor: string;
     codigo_trazabilidad: string;
     nombre_rapido: string | null;
     precio_referencia: number | null;
@@ -144,4 +145,15 @@ export interface ViewHistorialProducto {
     categoria: string | null;
     departamento: string | null;
     foto_principal_url: string | null;
+}
+
+export interface ViewDirectorioProveedor {
+    id: string;
+    nombre_empresa: string;
+    contacto_principal: string | null;
+    email_contacto: string | null;
+    pais_origen: string | null;
+    sap_bp_id: string | null;
+    estado_activo: boolean;
+    cantidad_productos: number;
 }

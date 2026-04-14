@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useEnriquecimiento } from "@/hooks/useEnriquecimiento";
-import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon, Trash2, AlertTriangle } from "lucide-react";
+import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon, Trash2, Building2 } from "lucide-react";
 import CamaraWidget from "../captura/CamaraWidget";
 import { eliminarProducto } from "@/actions/productos";
-import { ConfirmModal } from "@/components/ui/ConfirmModal"; // Asumo que tienes este componente de las Ferias
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { supabase } from "@/lib/supabase";
 
 type Props = {
     idProducto: string;
     onClose: () => void;
-    onSuccess?: () => void; // Para refrescar la grilla principal
+    onSuccess?: () => void;
 };
 
 type FotoExistente = { id: string; url: string };
@@ -20,18 +21,19 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
 
     const [cargandoDetalle, setCargandoDetalle] = useState(false);
     const [successMsg, setSuccessMsg] = useState(false);
+    const [localError, setLocalError] = useState("");
 
-    // Estados de Eliminación
     const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Estados para las fotos
     const [fotosExistentes, setFotosExistentes] = useState<FotoExistente[]>([]);
     const [fotosNuevas, setFotosNuevas] = useState<File[]>([]);
     const [fotosBorradas, setFotosBorradas] = useState<string[]>([]);
     const [codigoTrazabilidad, setCodigoTrazabilidad] = useState<string>("");
 
     const [formData, setFormData] = useState({
+        id_proveedor: '',
+        proveedor_nombre: '',
         nombre_rapido: '',
         precio_referencia: '',
         moneda: 'USD',
@@ -53,10 +55,20 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
 
         const fetchDetalle = async () => {
             setCargandoDetalle(true);
+            setLocalError("");
             const data = await obtenerDetalleProducto(idProducto);
-            if (data) {
+
+            const { data: provData } = await supabase.schema('sourcing')
+                .from('productos_prospecto')
+                .select('id_proveedor, proveedores(nombre_empresa)')
+                .eq('id', idProducto)
+                .single();
+
+            if (data && provData) {
                 setCodigoTrazabilidad(data.codigo_trazabilidad);
                 setFormData({
+                    id_proveedor: provData.id_proveedor || '',
+                    proveedor_nombre: (provData.proveedores as any)?.nombre_empresa || '',
                     nombre_rapido: data.nombre_rapido || '',
                     precio_referencia: data.precio_referencia ? data.precio_referencia.toString() : '',
                     moneda: data.moneda || 'USD',
@@ -100,7 +112,26 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!idProducto) return;
+        setLocalError("");
 
+        // 1. Actualizamos el nombre del proveedor en su catálogo maestro
+        if (formData.id_proveedor && formData.proveedor_nombre.trim()) {
+            const { error: provError } = await supabase.schema('sourcing')
+                .from('proveedores')
+                .update({ nombre_empresa: formData.proveedor_nombre.trim() })
+                .eq('id', formData.id_proveedor);
+
+            if (provError) {
+                if (provError.code === '23505') {
+                    setLocalError(`El proveedor "${formData.proveedor_nombre}" ya existe en el sistema.`);
+                } else {
+                    setLocalError("Error al actualizar el nombre del proveedor.");
+                }
+                return;
+            }
+        }
+
+        // 2. Guardamos el producto
         const datosLimpios = {
             nombre_rapido: formData.nombre_rapido.trim() || '',
             precio_referencia: formData.precio_referencia ? parseFloat(formData.precio_referencia) : undefined,
@@ -136,8 +167,8 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
         const result = await eliminarProducto(idProducto);
         if (result.success) {
             setIsConfirmDeleteOpen(false);
-            if (onSuccess) onSuccess(); // Refresca la grilla
-            onClose(); // Cierra el modal
+            if (onSuccess) onSuccess();
+            onClose();
         } else {
             alert("Error al eliminar: " + result.error);
             setIsDeleting(false);
@@ -148,7 +179,6 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
 
     return (
         <div className="fixed inset-0 z-[100] bg-gray-50/95 backdrop-blur-sm overflow-y-auto animate-in slide-in-from-bottom-4 duration-300">
-            {/* HEADER FIJO */}
             <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between shadow-sm">
                 <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors">
                     <X className="w-6 h-6" />
@@ -160,7 +190,6 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                     </p>
                 </div>
 
-                {/* Botón de Eliminar Arriba a la derecha */}
                 {!cargandoDetalle && (
                     <button
                         type="button"
@@ -181,7 +210,6 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
             ) : (
                 <form id="form-historial" onSubmit={handleSubmit} className="p-4 md:p-8 max-w-7xl mx-auto pb-32 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
 
-                    {/* COLUMNA IZQUIERDA (Fotos) - IDÉNTICA A PENDIENTES */}
                     <div className="lg:col-span-5 xl:col-span-4">
                         <div className="sticky top-24">
                             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-5">
@@ -238,7 +266,6 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                         </div>
                     </div>
 
-                    {/* COLUMNA DERECHA (Formulario) - IDÉNTICA A PENDIENTES */}
                     <div className="lg:col-span-7 xl:col-span-8 space-y-6">
 
                         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
@@ -247,13 +274,27 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                                 <span>Datos del Producto</span>
                             </h3>
 
-                            <div>
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombre / Artículo <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text" required
-                                    value={formData.nombre_rapido} onChange={e => setFormData({ ...formData, nombre_rapido: e.target.value })}
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
-                                />
+                            {/* CUADRÍCULA: Proveedor y Nombre lado a lado */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Proveedor (Fábrica) <span className="text-red-500">*</span></label>
+                                    <div className="relative">
+                                        <Building2 className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                                        <input
+                                            type="text" required
+                                            value={formData.proveedor_nombre} onChange={e => setFormData({ ...formData, proveedor_nombre: e.target.value })}
+                                            className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombre / Artículo <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text" required
+                                        value={formData.nombre_rapido} onChange={e => setFormData({ ...formData, nombre_rapido: e.target.value })}
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -375,11 +416,14 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                         </div>
                     </div>
 
-                    {error && <div className="lg:col-span-12 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold text-center border border-red-100">{error}</div>}
+                    {(error || localError) && (
+                        <div className="lg:col-span-12 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold text-center border border-red-100">
+                            {error || localError}
+                        </div>
+                    )}
                 </form>
             )}
 
-            {/* BOTÓN FLOTANTE */}
             {!cargandoDetalle && (
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-[110]">
                     <button
@@ -393,7 +437,6 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                 </div>
             )}
 
-            {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
             <ConfirmModal
                 isOpen={isConfirmDeleteOpen}
                 onClose={() => setIsConfirmDeleteOpen(false)}

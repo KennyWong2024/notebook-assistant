@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useEnriquecimiento } from "@/hooks/useEnriquecimiento";
-import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon } from "lucide-react";
+import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon, Building2 } from "lucide-react";
 import CamaraWidget from "../captura/CamaraWidget";
+import { supabase } from "@/lib/supabase";
 
 type PanelProps = {
     idProducto: string | null;
@@ -18,12 +19,15 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
 
     const [cargandoDetalle, setCargandoDetalle] = useState(false);
     const [successMsg, setSuccessMsg] = useState(false);
+    const [localError, setLocalError] = useState("");
 
     const [fotosExistentes, setFotosExistentes] = useState<FotoExistente[]>([]);
     const [fotosNuevas, setFotosNuevas] = useState<File[]>([]);
     const [fotosBorradas, setFotosBorradas] = useState<string[]>([]);
 
     const [formData, setFormData] = useState({
+        id_proveedor: '',
+        proveedor_nombre: '',
         nombre_rapido: '',
         precio_referencia: '',
         moneda: 'USD',
@@ -45,9 +49,19 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
 
         const fetchDetalle = async () => {
             setCargandoDetalle(true);
+            setLocalError("");
             const data = await obtenerDetalleProducto(idProducto);
-            if (data) {
+
+            const { data: provData } = await supabase.schema('sourcing')
+                .from('productos_prospecto')
+                .select('id_proveedor, proveedores(nombre_empresa)')
+                .eq('id', idProducto)
+                .single();
+
+            if (data && provData) {
                 setFormData({
+                    id_proveedor: provData.id_proveedor || '',
+                    proveedor_nombre: (provData.proveedores as any)?.nombre_empresa || '',
                     nombre_rapido: data.nombre_rapido || '',
                     precio_referencia: data.precio_referencia ? data.precio_referencia.toString() : '',
                     moneda: data.moneda || 'USD',
@@ -91,7 +105,26 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!idProducto) return;
+        setLocalError("");
 
+        // 1. Actualizamos el nombre del proveedor en su catálogo maestro
+        if (formData.id_proveedor && formData.proveedor_nombre.trim()) {
+            const { error: provError } = await supabase.schema('sourcing')
+                .from('proveedores')
+                .update({ nombre_empresa: formData.proveedor_nombre.trim() })
+                .eq('id', formData.id_proveedor);
+
+            if (provError) {
+                if (provError.code === '23505') {
+                    setLocalError(`El proveedor "${formData.proveedor_nombre}" ya existe en el sistema.`);
+                } else {
+                    setLocalError("Error al actualizar el nombre del proveedor.");
+                }
+                return;
+            }
+        }
+
+        // 2. Guardamos el producto (Hook original)
         const datosLimpios = {
             nombre_rapido: formData.nombre_rapido.trim() || '',
             precio_referencia: formData.precio_referencia ? parseFloat(formData.precio_referencia) : undefined,
@@ -147,7 +180,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
             ) : (
                 <form id="form-enriquecimiento" onSubmit={handleSubmit} className="p-4 md:p-8 max-w-7xl mx-auto pb-32 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
 
-                    {/* COLUMNA IZQUIERDA (Fotos)*/}
+                    {/* COLUMNA IZQUIERDA (Fotos) */}
                     <div className="lg:col-span-5 xl:col-span-4">
                         <div className="sticky top-24">
                             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-5">
@@ -163,7 +196,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     onImageCaptured={(file) => setFotosNuevas([...fotosNuevas, file])}
                                 />
 
-                                {/* Grid Dinámico de Fotos */}
                                 {(fotosExistentes.length > 0 || fotosNuevas.length > 0) && (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
                                         {fotosExistentes.map((foto, index) => (
@@ -183,7 +215,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                             </div>
                                         ))}
 
-                                        {/* Fotos recién tomadas */}
                                         {fotosNuevas.map((file, index) => (
                                             <div
                                                 key={index}
@@ -217,13 +248,27 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                 <span>Datos del Producto</span>
                             </h3>
 
-                            <div>
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombre / Artículo <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text" required
-                                    value={formData.nombre_rapido} onChange={e => setFormData({ ...formData, nombre_rapido: e.target.value })}
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
-                                />
+                            {/* NUEVA CUADRÍCULA: Proveedor y Nombre lado a lado */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Proveedor (Fábrica) <span className="text-red-500">*</span></label>
+                                    <div className="relative">
+                                        <Building2 className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                                        <input
+                                            type="text" required
+                                            value={formData.proveedor_nombre} onChange={e => setFormData({ ...formData, proveedor_nombre: e.target.value })}
+                                            className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombre / Artículo <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text" required
+                                        value={formData.nombre_rapido} onChange={e => setFormData({ ...formData, nombre_rapido: e.target.value })}
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -231,7 +276,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Moneda</label>
                                     <select
                                         value={formData.moneda} onChange={e => setFormData({ ...formData, moneda: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     >
                                         <option value="USD">USD ($)</option>
                                         <option value="EUR">EUR (€)</option>
@@ -243,7 +288,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <input
                                         type="number" step="0.01"
                                         value={formData.precio_referencia} onChange={e => setFormData({ ...formData, precio_referencia: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     />
                                 </div>
                             </div>
@@ -253,7 +298,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                 <textarea
                                     rows={3}
                                     value={formData.descripcion_libre} onChange={e => setFormData({ ...formData, descripcion_libre: e.target.value })}
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all resize-none"
+                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all resize-none"
                                 />
                             </div>
 
@@ -287,7 +332,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                         required
                                         value={formData.id_departamento}
                                         onChange={e => setFormData({ ...formData, id_departamento: e.target.value, id_categoria: '' })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     >
                                         <option value="">Selecciona...</option>
                                         {departamentos.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
@@ -299,7 +344,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <select
                                         required disabled={!formData.id_departamento}
                                         value={formData.id_categoria} onChange={e => setFormData({ ...formData, id_categoria: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all disabled:bg-gray-100 disabled:text-gray-400"
                                     >
                                         <option value="">Selecciona...</option>
                                         {categoriasFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -321,7 +366,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <input
                                         type="text" placeholder="FOB, EXW..."
                                         value={formData.incoterm} onChange={e => setFormData({ ...formData, incoterm: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     />
                                 </div>
                                 <div>
@@ -329,7 +374,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <input
                                         type="text" placeholder="Ej. 12 meses"
                                         value={formData.shelf_life} onChange={e => setFormData({ ...formData, shelf_life: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     />
                                 </div>
                             </div>
@@ -341,13 +386,17 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" className="sr-only peer" checked={formData.pidio_muestra} onChange={e => setFormData({ ...formData, pidio_muestra: e.target.checked })} />
-                                    <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-600 shadow-inner"></div>
+                                    <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gray-900 shadow-inner"></div>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    {error && <div className="lg:col-span-12 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold text-center border border-red-100">{error}</div>}
+                    {(error || localError) && (
+                        <div className="lg:col-span-12 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold text-center border border-red-100">
+                            {error || localError}
+                        </div>
+                    )}
                 </form>
             )}
 

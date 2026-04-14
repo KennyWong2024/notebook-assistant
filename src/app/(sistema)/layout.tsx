@@ -53,21 +53,8 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
-
-            {/* =========================================
-          DESKTOP SIDEBAR 
-      ========================================= */}
             <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 flex-shrink-0 relative z-30">
-                <div className="p-6 border-b border-gray-200 flex items-center space-x-2">
-                    <Building2 className="w-8 h-8 text-red-600" />
-                    <div>
-                        <h2 className="text-xl font-black text-gray-900 tracking-tight leading-tight">
-                            Congress<span className="text-red-600">Notebook</span>
-                        </h2>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Pequeño Mundo</p>
-                    </div>
-                </div>
-
+                {/* Desktop Nav */}
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <Link href="/dashboard" className={getSidebarClass("/dashboard")}>
                         <LayoutDashboard className="w-5 h-5" /> <span>Pendientes</span>
@@ -75,15 +62,15 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                     <Link href="/historico" className={getSidebarClass("/historico")}>
                         <Map className="w-5 h-5" /> <span>Histórico</span>
                     </Link>
+                    <Link href="/proveedores" className={getSidebarClass("/proveedores")}>
+                        <Building2 className="w-5 h-5" /> <span>Proveedores</span>
+                    </Link>
                     <Link href="/ferias" className={getSidebarClass("/ferias")}>
                         <Briefcase className="w-5 h-5" /> <span>Ferias</span>
                     </Link>
                 </nav>
             </aside>
 
-            {/* =========================================
-          CONTENIDO PRINCIPAL Y HEADER SUPERIOR
-      ========================================= */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
                 {/* HEADER SUPERIOR */}
@@ -157,12 +144,8 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                     {children}
                 </main>
             </div>
-
-            {/* =========================================
-          MOBILE BOTTOM NAV 
-      ========================================= */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 flex justify-around items-center px-1 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-
+                {/* Movil Nav */}
                 <Link href="/dashboard" className={`w-1/3 ${getMobileClass("/dashboard")}`}>
                     <LayoutDashboard className="w-6 h-6" />
                     <span className="text-[10px] font-medium mt-1">Pendientes</span>
