@@ -6,9 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
     LayoutDashboard, Map, Briefcase, Building2, Plus,
-    User, ShieldAlert, LogOut, ChevronDown
+    User, ShieldAlert, LogOut, ChevronDown, BookOpen
 } from "lucide-react";
-import LogoutButton from "@/components/buttons/LogoutButton";
 
 export default function SistemaLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -39,28 +38,41 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
 
     const getSidebarClass = (path: string) => {
         const isActive = pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
-        return `flex items-center space-x-3 p-3 rounded-xl transition-colors ${isActive ? "bg-red-50 text-red-600 font-semibold" : "text-gray-700 hover:bg-gray-100 font-medium"
-            }`;
+        return `flex items-center space-x-3 p-3 rounded-xl transition-colors ${isActive ? "bg-red-50 text-red-600 font-bold" : "text-gray-600 hover:bg-gray-100 font-medium"}`;
     };
 
     const getMobileClass = (path: string) => {
         const isActive = pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
-        return `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-red-600" : "text-gray-500 hover:text-gray-900"
-            }`;
+        return `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-red-600" : "text-gray-400 hover:text-gray-900"}`;
     };
 
     const initials = userName ? userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'PM';
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
+
+            {/* =========================================
+                 DESKTOP SIDEBAR 
+            ========================================= */}
             <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 flex-shrink-0 relative z-30">
-                {/* Desktop Nav */}
+                {/* Logo Desktop (Recuperado) */}
+                <div className="p-6 border-b border-gray-200 flex items-center space-x-2">
+                    <Building2 className="w-8 h-8 text-red-600" />
+                    <div>
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight leading-tight">
+                            Congress<span className="text-red-600">Notebook</span>
+                        </h2>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Pequeño Mundo</p>
+                    </div>
+                </div>
+
+                {/* Menú Desktop */}
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <Link href="/dashboard" className={getSidebarClass("/dashboard")}>
                         <LayoutDashboard className="w-5 h-5" /> <span>Pendientes</span>
                     </Link>
                     <Link href="/historico" className={getSidebarClass("/historico")}>
-                        <Map className="w-5 h-5" /> <span>Histórico</span>
+                        <BookOpen className="w-5 h-5" /> <span>Histórico</span>
                     </Link>
                     <Link href="/proveedores" className={getSidebarClass("/proveedores")}>
                         <Building2 className="w-5 h-5" /> <span>Proveedores</span>
@@ -73,9 +85,12 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-                {/* HEADER SUPERIOR */}
+                {/* =========================================
+                     HEADER SUPERIOR (Móvil y Desktop)
+                ========================================= */}
                 <header className="bg-white px-5 py-4 border-b border-gray-200 flex items-center justify-between z-30 shadow-sm relative">
 
+                    {/* Logo Móvil */}
                     <div className="md:hidden flex items-center space-x-2">
                         <Building2 className="w-6 h-6 text-red-600" />
                         <h2 className="text-lg font-black text-gray-900 tracking-tight">
@@ -83,7 +98,7 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                         </h2>
                     </div>
 
-                    <div className="hidden md:block text-sm font-medium text-gray-500">
+                    <div className="hidden md:block text-sm font-bold text-gray-400 uppercase tracking-widest">
                         Panel Principal
                     </div>
 
@@ -107,7 +122,6 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                             ></div>
                         )}
 
-                        {/* Panel Desplegable */}
                         {isDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                                 <div className="p-4 border-b border-gray-50 bg-gray-50/50">
@@ -130,7 +144,7 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                                 </div>
 
                                 <div className="p-2 border-t border-gray-100">
-                                    <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors">
+                                    <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-red-600 rounded-lg transition-colors">
                                         <LogOut className="w-4 h-4" />
                                         <span className="font-medium">Cerrar Sesión</span>
                                     </button>
@@ -144,25 +158,43 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                     {children}
                 </main>
             </div>
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 flex justify-around items-center px-1 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                {/* Movil Nav */}
-                <Link href="/dashboard" className={`w-1/3 ${getMobileClass("/dashboard")}`}>
+
+            {/* =========================================
+                 MOBILE BOTTOM NAV (5 Elementos)
+            ========================================= */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 flex justify-around items-center px-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+
+                {/* 1. Pendientes */}
+                <Link href="/dashboard" className={`w-1/5 ${getMobileClass("/dashboard")}`}>
                     <LayoutDashboard className="w-6 h-6" />
-                    <span className="text-[10px] font-medium mt-1">Pendientes</span>
+                    <span className="text-[9px] font-bold mt-1">Pendientes</span>
                 </Link>
 
-                <div className="w-1/3 flex justify-center">
-                    <Link href="/captura" className="relative -top-6 flex flex-col items-center group">
-                        <div className="bg-red-600 text-white p-4 rounded-full shadow-lg shadow-red-200 border-4 border-gray-50 flex items-center justify-center transform transition-transform active:scale-95">
+                {/* 2. Histórico */}
+                <Link href="/historico" className={`w-1/5 ${getMobileClass("/historico")}`}>
+                    <BookOpen className="w-6 h-6" />
+                    <span className="text-[9px] font-bold mt-1">Histórico</span>
+                </Link>
+
+                {/* 3. BOTÓN CENTRAL: Captura */}
+                <div className="w-1/5 flex justify-center relative">
+                    <Link href="/captura" className="absolute -top-7 flex flex-col items-center group">
+                        <div className="bg-red-600 text-white p-4 rounded-full shadow-lg shadow-red-200 border-4 border-white flex items-center justify-center transform transition-transform active:scale-95">
                             <Plus className="w-7 h-7 stroke-[3]" />
                         </div>
-                        <span className="text-[10px] font-bold text-red-600 mt-1 absolute -bottom-4">Captura</span>
                     </Link>
                 </div>
 
-                <Link href="/historico" className={`w-1/3 ${getMobileClass("/historico")}`}>
-                    <Map className="w-6 h-6" />
-                    <span className="text-[10px] font-medium mt-1">Histórico</span>
+                {/* 4. Proveedores */}
+                <Link href="/proveedores" className={`w-1/5 ${getMobileClass("/proveedores")}`}>
+                    <Building2 className="w-6 h-6" />
+                    <span className="text-[9px] font-bold mt-1">Directorio</span>
+                </Link>
+
+                {/* 5. Ferias */}
+                <Link href="/ferias" className={`w-1/5 ${getMobileClass("/ferias")}`}>
+                    <Briefcase className="w-6 h-6" />
+                    <span className="text-[9px] font-bold mt-1">Ferias</span>
                 </Link>
 
             </nav>
