@@ -52,13 +52,14 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
             setLocalError("");
             const data = await obtenerDetalleProducto(idProducto);
 
-            const { data: provData } = await supabase.schema('sourcing')
-                .from('productos_prospecto')
-                .select('id_proveedor, proveedores(nombre_empresa)')
-                .eq('id', idProducto)
-                .single();
+            try {
+                const { data: provData } = await supabase.schema('sourcing')
+                    .from('productos_prospecto')
+                    .select('id_proveedor, proveedores(nombre_empresa)')
+                    .eq('id', idProducto)
+                    .maybeSingle();
 
-            if (data && provData) {
+                if (data && provData) {
                 setFormData({
                     id_proveedor: provData.id_proveedor || '',
                     proveedor_nombre: (provData.proveedores as any)?.nombre_empresa || '',
@@ -80,6 +81,12 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                         .map((a: any) => ({ id: a.id, url: a.url_storage }));
                     setFotosExistentes(fotosProd);
                 }
+            } else {
+                setLocalError("Registro bloqueado o no encontrado (Permisos o Red). Verifica base de datos y RLS.");
+            }
+            } catch (err) {
+                console.error("Fallo crítico en sub-query", err);
+                setLocalError("Error interno conectando con el banco de datos.");
             }
             setCargandoDetalle(false);
         };

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
     LayoutDashboard, Map, Briefcase, Building2, Plus,
-    User, ShieldAlert, LogOut, ChevronDown, BookOpen
+    User, ShieldAlert, LogOut, ChevronDown, BookOpen, PieChart
 } from "lucide-react";
 
 import SyncEngine from "@/components/pwa/SyncEngine";
@@ -72,6 +72,9 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <Link href="/dashboard" className={getSidebarClass("/dashboard")}>
                         <LayoutDashboard className="w-5 h-5" /> <span>Pendientes</span>
+                    </Link>
+                    <Link href="/analitica" className={getSidebarClass("/analitica")}>
+                        <PieChart className="w-5 h-5" /> <span>Analítica y Reportes</span>
                     </Link>
                     <Link href="/historico" className={getSidebarClass("/historico")}>
                         <BookOpen className="w-5 h-5" /> <span>Histórico</span>

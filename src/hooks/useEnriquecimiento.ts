@@ -42,7 +42,7 @@ export function useEnriquecimiento() {
                     activos_adjuntos ( id, url_storage, id_tipo_activo, estado_activo )
                 `)
                 .eq('id', idProducto)
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
             return data as any;
