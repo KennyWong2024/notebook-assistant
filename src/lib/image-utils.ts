@@ -18,6 +18,6 @@ export async function comprimirImagen(archivo: File) {
 export function generarCodigoTrazabilidad(nombreFeria: string, nombreProducto: string) {
     const prefix = nombreFeria.substring(0, 3).toUpperCase();
     const prod = nombreProducto.substring(0, 3).toUpperCase();
-    const random = Math.floor(1000 + Math.random() * 9000);
-    return `${prefix}-${prod}-${random}`;
+    const tsMillis = Date.now().toString().slice(-5);
+    return `${prefix}-${prod}-${tsMillis}`;
 }

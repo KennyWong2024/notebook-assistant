@@ -9,6 +9,8 @@ import {
     User, ShieldAlert, LogOut, ChevronDown, BookOpen
 } from "lucide-react";
 
+import SyncEngine from "@/components/pwa/SyncEngine";
+
 export default function SistemaLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -102,6 +104,10 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                         Panel Principal
                     </div>
 
+                    <div className="flex-1 flex justify-end px-4">
+                        <SyncEngine />
+                    </div>
+
                     {/* MENÚ DE USUARIO DROPDOWN */}
                     <div className="relative">
                         <button
@@ -177,10 +183,10 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                 </Link>
 
                 {/* 3. BOTÓN CENTRAL: Captura */}
-                <div className="w-1/5 flex justify-center relative">
-                    <Link href="/captura" className="absolute -top-7 flex flex-col items-center group">
-                        <div className="bg-red-600 text-white p-4 rounded-full shadow-lg shadow-red-200 border-4 border-white flex items-center justify-center transform transition-transform active:scale-95">
-                            <Plus className="w-7 h-7 stroke-[3]" />
+                <div className="w-[15%] mx-1 flex justify-center relative">
+                    <Link href="/captura" className="absolute -top-6 flex flex-col items-center group">
+                        <div className="bg-red-600 text-white p-3.5 rounded-full shadow-lg shadow-red-200 border-[3px] border-white flex items-center justify-center transform transition-transform active:scale-95">
+                            <Plus className="w-6 h-6 stroke-[3]" />
                         </div>
                     </Link>
                 </div>

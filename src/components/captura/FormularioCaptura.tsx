@@ -9,8 +9,9 @@ import CapturaTarjeta from "./CapturaTarjeta";
 import BuscadorProveedor from "./BuscadorProveedor";
 import GaleriaMiniaturas from "./GaleriaMiniaturas";
 import TarjetaProducto from "./TarjetaProducto";
-import { generarCodigoTrazabilidad } from "@/lib/image-utils";
+import { comprimirImagen } from "@/lib/image-utils";
 import { Fair } from "@/types/database";
+import { guardarProspectoLocal, ProspectoOffline, ProductoOffline } from "@/lib/offline-db";
 
 type ProductoTemp = {
     tempId: number;
@@ -129,79 +130,60 @@ export default function FormularioCaptura() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No hay sesión");
 
-            // 1. Proveedor
-            let providerId;
-            const { data: provExistente } = await supabase.schema('sourcing').from('proveedores').select('id').ilike('nombre_empresa', nombreProveedor).maybeSingle();
-            if (provExistente) {
-                providerId = provExistente.id;
-            } else {
-                const { data: nuevoProv } = await supabase.schema('sourcing').from('proveedores').insert({
-                    nombre_empresa: nombreProveedor,
-                    email_contacto: correoProveedor.trim() || null,
-                    creado_por: user.id
-                }).select().single();
-                providerId = nuevoProv.id;
+            // 1. Comprimir fotos primero para aligerar IndexedDB
+            const fotoComprimidaTarjeta = fotoTarjeta ? await comprimirImagen(fotoTarjeta) : undefined;
+            
+            const standComprimidas: Blob[] = [];
+            for (const f of fotosGenerales) {
+                standComprimidas.push(await comprimirImagen(f));
             }
 
-            // 2. Interacción y Tarjeta
-            if (notasGenerales.trim()) {
-                await supabase.schema('sourcing').from('proveedor_feria_interacciones').upsert({
-                    id_proveedor: providerId, id_feria: feriaActiva.id, creado_por: user.id, notas_generales: notasGenerales
-                }, { onConflict: 'id_proveedor, id_feria' });
-            }
-
-            if (fotoTarjeta) {
-                const path = `proveedores/${providerId}/tarjeta_${Date.now()}.jpg`;
-                await supabase.storage.from('activos_feria').upload(path, fotoTarjeta);
-                const { data: url } = supabase.storage.from('activos_feria').getPublicUrl(path);
-                await supabase.schema('sourcing').from('activos_adjuntos').insert({ url_storage: url.publicUrl, id_tipo_activo: 1, creado_por: user.id, id_proveedor: providerId });
-            }
-
-            // 3. Productos (Lógica limpia para NULLs en BD)
+            const productosOffline: ProductoOffline[] = [];
             for (const prod of productos) {
                 const tieneData = prod.nombre.trim() || prod.precio || prod.fotos.length > 0 || prod.prioridad;
                 if (!tieneData) continue;
 
-                // Generar código solo si hay nombre, de lo contrario usar un fallback temporal
-                const codigo = generarCodigoTrazabilidad(feriaActiva.nombre, prod.nombre || 'PROD');
-
-                const { data: dbProd } = await supabase.schema('sourcing').from('productos_prospecto').insert({
-                    codigo_trazabilidad: codigo,
-                    id_proveedor: providerId,
-                    id_feria: feriaActiva.id,
-                    creado_por: user.id,
-                    nombre_rapido: prod.nombre.trim() || null,
-                    precio_referencia: prod.precio ? parseFloat(prod.precio) : null,
-                    moneda: prod.moneda,
-                    descripcion_libre: prod.descripcion.trim() || null,
-                    prioridad: prod.prioridad,
-                    estado_compra: 'borrador'
-                }).select().single();
-
-                for (const [idx, f] of prod.fotos.entries()) {
-                    const path = `${dbProd.id}/p_${Date.now()}_${idx}.jpg`;
-                    await supabase.storage.from('activos_feria').upload(path, f);
-                    const { data: url } = supabase.storage.from('activos_feria').getPublicUrl(path);
-                    await supabase.schema('sourcing').from('activos_adjuntos').insert({ url_storage: url.publicUrl, id_tipo_activo: 2, creado_por: user.id, id_producto: dbProd.id });
+                const fotosProdComprimidas: Blob[] = [];
+                for (const pf of prod.fotos) {
+                    fotosProdComprimidas.push(await comprimirImagen(pf));
                 }
-            }
 
-            // 4. Stand General
-            for (const [index, foto] of fotosGenerales.entries()) {
-                const path = `ferias/${feriaActiva.id}/stand_${providerId}_${Date.now()}_${index}.jpg`;
-                await supabase.storage.from('activos_feria').upload(path, foto);
-                const { data: urlGen } = supabase.storage.from('activos_feria').getPublicUrl(path);
-                await supabase.schema('sourcing').from('activos_adjuntos').insert({
-                    url_storage: urlGen.publicUrl, id_tipo_activo: 3, creado_por: user.id, id_proveedor: providerId, id_feria: feriaActiva.id
+                productosOffline.push({
+                    nombre_rapido: prod.nombre.trim() || '',
+                    precio_referencia: prod.precio ? parseFloat(prod.precio) : undefined,
+                    moneda: prod.moneda,
+                    descripcion_libre: prod.descripcion.trim() || undefined,
+                    prioridad: prod.prioridad || undefined,
+                    fotos: fotosProdComprimidas
                 });
             }
+
+            // 2. Construir objeto local
+            const idLocalCifrado = `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+            const prospectoOffline: Omit<ProspectoOffline, 'estado_subida' | 'intento'> = {
+                id_local: idLocalCifrado,
+                nombre_empresa: nombreProveedor.trim(),
+                email_contacto: correoProveedor.trim(),
+                id_feria: feriaActiva.id,
+                nombre_feria: feriaActiva.nombre,
+                notas_generales: notasGenerales.trim(),
+                creado_por: user.id,
+                productos: productosOffline,
+                foto_tarjeta: fotoComprimidaTarjeta,
+                fotos_stand: standComprimidas,
+                timestamp: Date.now()
+            };
+
+            // 3. Guardar en disco duro local (IndexedDB)
+            await guardarProspectoLocal(prospectoOffline);
 
             setSuccess(true);
             setTimeout(() => router.push('/dashboard'), 1000);
 
         } catch (err) {
             console.error(err);
-            alert("Error al guardar la libreta. Revisa tu conexión a internet.");
+            alert("Error al guardar localmente en IndexedDB. Almacenamiento lleno?");
         } finally {
             setLoading(false);
         }

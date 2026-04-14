@@ -3,16 +3,17 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { ViewHistorialProducto } from "@/types/database";
-import { Loader2, Building2, MapPin, Mail, UserCircle, Database, Edit2, ArrowLeft, PackageSearch } from "lucide-react";
+import { Loader2, Building2, MapPin, Mail, UserCircle, Database, Edit2, ArrowLeft, PackageSearch, History } from "lucide-react";
 import Link from "next/link";
-
 import TarjetaHistorial from "@/components/historico/TarjetaHistorial";
 import ModalDetalleHistorial from "@/components/historico/ModalDetalleHistorial";
 import ModalEditarProveedor from "./ModalEditarProveedor";
 
 export default function ShowroomProveedor({ idProveedor }: { idProveedor: string }) {
     const [proveedor, setProveedor] = useState<any>(null);
+    const [interacciones, setInteracciones] = useState<any[]>([]);
     const [productos, setProductos] = useState<ViewHistorialProducto[]>([]);
+    const [showHistorialCorreos, setShowHistorialCorreos] = useState(false);
     const [loading, setLoading] = useState(true);
     const [canEdit, setCanEdit] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -40,7 +41,16 @@ export default function ShowroomProveedor({ idProveedor }: { idProveedor: string
                 }
             }
 
-            // 2. Traer Productos (CORREGIDO: Ordenamos por codigo_trazabilidad porque created_at no existe en la vista)
+            // 1.5 Traer Historial de Correos/Encuentros
+            const { data: interaccionesData } = await supabase.schema('sourcing')
+                .from('proveedor_feria_interacciones')
+                .select('id, fecha_interaccion, email_contacto, nombre_contacto, ferias(nombre)')
+                .eq('id_proveedor', idProveedor)
+                .order('fecha_interaccion', { ascending: false });
+
+            setInteracciones(interaccionesData || []);
+
+            // 2. Traer Productos
             const { data: prodData, error: prodError } = await supabase.schema('sourcing')
                 .from('v_historial_productos')
                 .select('*')
@@ -107,14 +117,57 @@ export default function ShowroomProveedor({ idProveedor }: { idProveedor: string
                             {proveedor.pais_origen || 'País de origen no registrado'}
                         </p>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-6 mt-6 pt-6 border-t border-gray-50">
-                            <div className="flex items-center text-gray-700 font-medium mb-3 sm:mb-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-6 mt-6 pt-6 border-t border-gray-50">
+                            <div className="flex items-center text-gray-700 font-medium mb-3 sm:mb-0 mt-2">
                                 <UserCircle className="w-5 h-5 mr-2 text-gray-400" />
-                                {proveedor.contacto_principal || <span className="text-gray-400 italic">Sin agente de ventas</span>}
+                                {proveedor.contacto_principal || <span className="text-gray-400 italic">Sin agente de ventas global</span>}
                             </div>
-                            <div className="flex items-center text-gray-700 font-medium">
-                                <Mail className="w-5 h-5 mr-2 text-gray-400" />
-                                {proveedor.email_contacto || <span className="text-gray-400 italic">Sin correo registrado</span>}
+                            <div className="relative mt-2 sm:mt-0">
+                                <div className="flex items-center text-gray-700 font-medium">
+                                    <Mail className="w-5 h-5 mr-2 text-gray-400" />
+                                    {interacciones.length > 0 && interacciones.find(i => i.email_contacto)?.email_contacto ? (
+                                        <span>{interacciones.find(i => i.email_contacto)?.email_contacto}</span>
+                                    ) : (
+                                        proveedor.email_contacto || <span className="text-gray-400 italic">Sin correo registrado</span>
+                                    )}
+                                    
+                                    {interacciones.filter(i => i.email_contacto).length > 0 && (
+                                        <button 
+                                            onClick={() => setShowHistorialCorreos(!showHistorialCorreos)}
+                                            className="ml-2 bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                            title="Ver historial de contactos"
+                                        >
+                                            <History className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                {showHistorialCorreos && (
+                                    <div className="absolute top-10 left-0 w-80 bg-white border border-gray-100 shadow-xl rounded-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 text-xs font-black text-gray-400 uppercase tracking-widest">
+                                            Historial de Correos en Ferias
+                                        </div>
+                                        <div className="max-h-48 overflow-y-auto p-2">
+                                            {interacciones.filter(i => i.email_contacto).map(int => (
+                                                <div key={int.id} className="p-3 bg-white hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100 flex flex-col mb-1">
+                                                    <span className="text-sm font-bold text-gray-900">{int.email_contacto}</span>
+                                                    <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+                                                        <span className="flex items-center"><MapPin className="w-3 h-3 mr-1" />{int.ferias?.nombre || 'Desconocida'}</span>
+                                                        <span>{new Date(int.fecha_interaccion).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {proveedor.email_contacto && !interacciones.find(i => i.email_contacto === proveedor.email_contacto) && (
+                                                <div className="p-3 bg-white rounded-xl flex flex-col mb-1">
+                                                    <span className="text-sm font-bold text-gray-900">{proveedor.email_contacto}</span>
+                                                    <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+                                                        <span>Correo Global Inicial</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {canEdit && (

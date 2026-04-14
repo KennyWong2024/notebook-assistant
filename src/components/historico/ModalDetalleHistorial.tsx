@@ -178,8 +178,8 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
     if (!idProducto) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] bg-gray-50/95 backdrop-blur-sm overflow-y-auto animate-in slide-in-from-bottom-4 duration-300">
-            <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between shadow-sm">
+        <div className="fixed inset-0 z-[100] bg-gray-50/95 backdrop-blur-sm flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+            <header className="flex-none bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between shadow-sm">
                 <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors">
                     <X className="w-6 h-6" />
                 </button>
@@ -202,6 +202,7 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                 )}
             </header>
 
+            <div className="flex-1 overflow-y-auto">
             {cargandoDetalle ? (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400 space-y-4">
                     <Loader2 className="w-10 h-10 animate-spin text-red-500" />
@@ -423,9 +424,10 @@ export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }
                     )}
                 </form>
             )}
+            </div>
 
             {!cargandoDetalle && (
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-[110]">
+                <div className="flex-none p-4 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-[110]">
                     <button
                         type="submit"
                         form="form-historial"
