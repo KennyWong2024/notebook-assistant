@@ -105,7 +105,6 @@ export interface FairAssignment {
     created_at: string;
 }
 
-// Tipo estructurado para el Frontend (UI)
 export type ProductoPendiente = {
     id: string;
     codigo_trazabilidad: string;
@@ -118,7 +117,6 @@ export type ProductoPendiente = {
     prioridad: number | null;
 };
 
-// Interfaz exacta que retorna la vista v_pendientes_bandeja desde Supabase
 export interface ViewPendientesBandeja {
     id: string;
     codigo_trazabilidad: string;
@@ -131,4 +129,19 @@ export interface ViewPendientesBandeja {
     proveedor: string | null;
     feria: string | null;
     foto_url: string | null;
+}
+
+export interface ViewHistorialProducto {
+    id: string;
+    codigo_trazabilidad: string;
+    nombre_rapido: string | null;
+    precio_referencia: number | null;
+    moneda: string | null;
+    estado_compra: 'completado' | 'muestra_solicitada' | 'aprobado_gerencia' | 'orden_colocada' | 'descartado';
+    estado_sincronizacion_sap: 'no_sincronizado' | 'en_proceso' | 'sincronizado_exito' | 'error';
+    proveedor: string | null;
+    feria: string | null;
+    categoria: string | null;
+    departamento: string | null;
+    foto_principal_url: string | null;
 }

@@ -2,21 +2,8 @@ import BandejaPendientes from "@/components/pendientes/BandejaPendientes";
 
 export default function DashboardPage() {
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8 pb-24 animate-in fade-in duration-300">
-            <div className="max-w-7xl mx-auto">
-                <header className="mb-8 pt-4">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-                        Mis Pendientes
-                    </h1>
-                    <p className="text-gray-500 text-sm font-medium mt-1">
-                        Productos capturados en feria pendientes de enriquecer.
-                    </p>
-                </header>
-
-                <main>
-                    <BandejaPendientes />
-                </main>
-            </div>
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto min-h-screen animate-in fade-in duration-300">
+            <BandejaPendientes />
         </div>
     );
 }

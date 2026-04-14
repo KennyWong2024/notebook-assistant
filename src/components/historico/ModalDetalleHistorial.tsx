@@ -2,26 +2,34 @@
 
 import { useState, useEffect } from "react";
 import { useEnriquecimiento } from "@/hooks/useEnriquecimiento";
-import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon } from "lucide-react";
+import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon, Trash2, AlertTriangle } from "lucide-react";
 import CamaraWidget from "../captura/CamaraWidget";
+import { eliminarProducto } from "@/actions/productos";
+import { ConfirmModal } from "@/components/ui/ConfirmModal"; // Asumo que tienes este componente de las Ferias
 
-type PanelProps = {
-    idProducto: string | null;
+type Props = {
+    idProducto: string;
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess?: () => void; // Para refrescar la grilla principal
 };
 
 type FotoExistente = { id: string; url: string };
 
-export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }: PanelProps) {
-    const { loading, error, departamentos, categorias, cargarCatalogos, obtenerDetalleProducto, guardarEnriquecimiento } = useEnriquecimiento();
+export default function ModalDetalleHistorial({ idProducto, onClose, onSuccess }: Props) {
+    const { loading: guardando, error, departamentos, categorias, cargarCatalogos, obtenerDetalleProducto, guardarEnriquecimiento } = useEnriquecimiento();
 
     const [cargandoDetalle, setCargandoDetalle] = useState(false);
     const [successMsg, setSuccessMsg] = useState(false);
 
+    // Estados de Eliminación
+    const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Estados para las fotos
     const [fotosExistentes, setFotosExistentes] = useState<FotoExistente[]>([]);
     const [fotosNuevas, setFotosNuevas] = useState<File[]>([]);
     const [fotosBorradas, setFotosBorradas] = useState<string[]>([]);
+    const [codigoTrazabilidad, setCodigoTrazabilidad] = useState<string>("");
 
     const [formData, setFormData] = useState({
         nombre_rapido: '',
@@ -47,6 +55,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
             setCargandoDetalle(true);
             const data = await obtenerDetalleProducto(idProducto);
             if (data) {
+                setCodigoTrazabilidad(data.codigo_trazabilidad);
                 setFormData({
                     nombre_rapido: data.nombre_rapido || '',
                     precio_referencia: data.precio_referencia ? data.precio_referencia.toString() : '',
@@ -116,8 +125,22 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
             setSuccessMsg(true);
             setTimeout(() => {
                 setSuccessMsg(false);
-                onSuccess();
+                if (onSuccess) onSuccess();
+                else onClose();
             }, 1000);
+        }
+    };
+
+    const handleEliminarTodoElProducto = async () => {
+        setIsDeleting(true);
+        const result = await eliminarProducto(idProducto);
+        if (result.success) {
+            setIsConfirmDeleteOpen(false);
+            if (onSuccess) onSuccess(); // Refresca la grilla
+            onClose(); // Cierra el modal
+        } else {
+            alert("Error al eliminar: " + result.error);
+            setIsDeleting(false);
         }
     };
 
@@ -127,27 +150,38 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
         <div className="fixed inset-0 z-[100] bg-gray-50/95 backdrop-blur-sm overflow-y-auto animate-in slide-in-from-bottom-4 duration-300">
             {/* HEADER FIJO */}
             <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between shadow-sm">
-                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:text-red-600 transition-colors">
+                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors">
                     <X className="w-6 h-6" />
                 </button>
                 <div className="text-center">
-                    <h1 className="text-lg font-black text-gray-900 tracking-tight">Registro Completo</h1>
-                    <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest flex items-center justify-center">
-                        Edición y Enriquecimiento
+                    <h1 className="text-lg font-black text-gray-900 tracking-tight">{codigoTrazabilidad || 'Cargando...'}</h1>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center">
+                        Ficha Técnica Editable
                     </p>
                 </div>
-                <div className="w-10"></div>
+
+                {/* Botón de Eliminar Arriba a la derecha */}
+                {!cargandoDetalle && (
+                    <button
+                        type="button"
+                        onClick={() => setIsConfirmDeleteOpen(true)}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                        title="Eliminar este producto permanentemente"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
+                )}
             </header>
 
             {cargandoDetalle ? (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400 space-y-4">
                     <Loader2 className="w-10 h-10 animate-spin text-red-500" />
-                    <p className="font-bold animate-pulse">Abriendo cuaderno...</p>
+                    <p className="font-bold animate-pulse">Abriendo expediente...</p>
                 </div>
             ) : (
-                <form id="form-enriquecimiento" onSubmit={handleSubmit} className="p-4 md:p-8 max-w-7xl mx-auto pb-32 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+                <form id="form-historial" onSubmit={handleSubmit} className="p-4 md:p-8 max-w-7xl mx-auto pb-32 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
 
-                    {/* COLUMNA IZQUIERDA (Fotos)*/}
+                    {/* COLUMNA IZQUIERDA (Fotos) - IDÉNTICA A PENDIENTES */}
                     <div className="lg:col-span-5 xl:col-span-4">
                         <div className="sticky top-24">
                             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-5">
@@ -163,7 +197,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     onImageCaptured={(file) => setFotosNuevas([...fotosNuevas, file])}
                                 />
 
-                                {/* Grid Dinámico de Fotos */}
                                 {(fotosExistentes.length > 0 || fotosNuevas.length > 0) && (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
                                         {fotosExistentes.map((foto, index) => (
@@ -183,7 +216,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                             </div>
                                         ))}
 
-                                        {/* Fotos recién tomadas */}
                                         {fotosNuevas.map((file, index) => (
                                             <div
                                                 key={index}
@@ -191,7 +223,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                             >
                                                 <img src={URL.createObjectURL(file)} alt="Nueva Foto" className="w-full h-full object-cover opacity-80" />
                                                 <div className="absolute inset-0 bg-red-600/10"></div>
-
                                                 <button
                                                     type="button"
                                                     onClick={() => handleBorrarNueva(index)}
@@ -207,10 +238,9 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                         </div>
                     </div>
 
-                    {/* COLUMNA DERECHA (Formulario) */}
+                    {/* COLUMNA DERECHA (Formulario) - IDÉNTICA A PENDIENTES */}
                     <div className="lg:col-span-7 xl:col-span-8 space-y-6">
 
-                        {/* Tarjeta 2: Datos Capturados (Editables) */}
                         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
                             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center space-x-2 ml-1">
                                 <Package className="w-4 h-4 text-gray-400" />
@@ -222,7 +252,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                 <input
                                     type="text" required
                                     value={formData.nombre_rapido} onChange={e => setFormData({ ...formData, nombre_rapido: e.target.value })}
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                 />
                             </div>
 
@@ -231,7 +261,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Moneda</label>
                                     <select
                                         value={formData.moneda} onChange={e => setFormData({ ...formData, moneda: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     >
                                         <option value="USD">USD ($)</option>
                                         <option value="EUR">EUR (€)</option>
@@ -243,7 +273,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <input
                                         type="number" step="0.01"
                                         value={formData.precio_referencia} onChange={e => setFormData({ ...formData, precio_referencia: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     />
                                 </div>
                             </div>
@@ -253,7 +283,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                 <textarea
                                     rows={3}
                                     value={formData.descripcion_libre} onChange={e => setFormData({ ...formData, descripcion_libre: e.target.value })}
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all resize-none"
+                                    className="w-full px-5 py-4 bg-yellow-50 border border-yellow-100 rounded-2xl focus:ring-2 focus:ring-yellow-400 outline-none text-sm font-medium text-gray-800 transition-all resize-none"
                                 />
                             </div>
 
@@ -273,7 +303,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                             </div>
                         </div>
 
-                        {/* Tarjeta 3: Clasificación */}
                         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
                             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center space-x-2 ml-1">
                                 <Tags className="w-4 h-4 text-gray-400" />
@@ -287,7 +316,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                         required
                                         value={formData.id_departamento}
                                         onChange={e => setFormData({ ...formData, id_departamento: e.target.value, id_categoria: '' })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     >
                                         <option value="">Selecciona...</option>
                                         {departamentos.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
@@ -299,7 +328,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <select
                                         required disabled={!formData.id_departamento}
                                         value={formData.id_categoria} onChange={e => setFormData({ ...formData, id_categoria: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all disabled:bg-gray-100 disabled:text-gray-400"
                                     >
                                         <option value="">Selecciona...</option>
                                         {categoriasFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -308,7 +337,6 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                             </div>
                         </div>
 
-                        {/* Tarjeta 4: Logística */}
                         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
                             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center space-x-2 ml-1">
                                 <Truck className="w-4 h-4 text-gray-400" />
@@ -321,7 +349,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <input
                                         type="text" placeholder="FOB, EXW..."
                                         value={formData.incoterm} onChange={e => setFormData({ ...formData, incoterm: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     />
                                 </div>
                                 <div>
@@ -329,7 +357,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                     <input
                                         type="text" placeholder="Ej. 12 meses"
                                         value={formData.shelf_life} onChange={e => setFormData({ ...formData, shelf_life: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none text-sm font-medium text-gray-800 transition-all"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                     />
                                 </div>
                             </div>
@@ -341,7 +369,7 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" className="sr-only peer" checked={formData.pidio_muestra} onChange={e => setFormData({ ...formData, pidio_muestra: e.target.checked })} />
-                                    <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-600 shadow-inner"></div>
+                                    <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gray-900 shadow-inner"></div>
                                 </label>
                             </div>
                         </div>
@@ -356,14 +384,26 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-[110]">
                     <button
                         type="submit"
-                        form="form-enriquecimiento"
-                        disabled={loading || !formData.id_departamento || !formData.id_categoria}
+                        form="form-historial"
+                        disabled={guardando || !formData.id_departamento || !formData.id_categoria}
                         className={`w-full max-w-lg mx-auto py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all flex items-center justify-center space-x-3 ${successMsg ? "bg-green-500 text-white shadow-green-200" : (!formData.id_departamento || !formData.id_categoria) ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-gray-900 text-white active:scale-95 shadow-gray-300"}`}
                     >
-                        {loading ? <Loader2 className="animate-spin w-6 h-6" /> : successMsg ? <CheckCircle2 className="w-6 h-6" /> : <><Save className="w-6 h-6" /><span>GUARDAR CAMBIOS</span></>}
+                        {guardando ? <Loader2 className="animate-spin w-6 h-6" /> : successMsg ? <CheckCircle2 className="w-6 h-6" /> : <><Save className="w-6 h-6" /><span>GUARDAR CAMBIOS</span></>}
                     </button>
                 </div>
             )}
+
+            {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
+            <ConfirmModal
+                isOpen={isConfirmDeleteOpen}
+                onClose={() => setIsConfirmDeleteOpen(false)}
+                onConfirm={handleEliminarTodoElProducto}
+                title="¿Eliminar este producto?"
+                description={<>Se borrará permanentemente la prospección <strong>{codigoTrazabilidad}</strong> y todas sus fotos asociadas. Esta acción no se puede deshacer.</>}
+                confirmText="Eliminar permanentemente"
+                variant="danger"
+                isLoading={isDeleting}
+            />
         </div>
     );
 }
