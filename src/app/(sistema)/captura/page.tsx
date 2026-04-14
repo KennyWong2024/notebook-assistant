@@ -2,7 +2,7 @@ import FormularioCaptura from "@/components/captura/FormularioCaptura";
 
 export default function CapturaPage() {
     return (
-        <div className="min-h-screen bg-gray-50 p-4 pb-24">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 min-h-screen">
             <div className="max-w-md mx-auto">
                 <header className="mb-6">
                     <h1 className="text-3xl font-black text-gray-900 tracking-tight">Captura Rápida</h1>

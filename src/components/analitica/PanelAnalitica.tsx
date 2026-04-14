@@ -14,7 +14,6 @@ import {
 type KPI = {
     totalProductos: number;
     completados: number;
-    presupuestoRef: number;
 };
 
 // Paleta del gráfico tipo PM (Rojos, Amarillos y grises de jerarquía)
@@ -29,7 +28,7 @@ const COLORES_ESTADO = {
 
 export default function AnaliticaPage() {
     const [loading, setLoading] = useState(true);
-    const [kpis, setKpis] = useState<KPI>({ totalProductos: 0, completados: 0, presupuestoRef: 0 });
+    const [kpis, setKpis] = useState<KPI>({ totalProductos: 0, completados: 0 });
     const [datosEstado, setDatosEstado] = useState<any[]>([]);
     const [datosDpto, setDatosDpto] = useState<any[]>([]);
     const [isExporting, setIsExporting] = useState(false);
@@ -50,17 +49,11 @@ export default function AnaliticaPage() {
             // Calcular KPIs
             let totProd = data.length;
             let completados = 0;
-            let ppt = 0;
             const stateMap: Record<string, number> = {};
             const dptoMap: Record<string, number> = {};
 
             data.forEach((row) => {
                 if (row.estado_compra !== 'borrador') completados++;
-                
-                // Mapeo estadístico (Solo suma un USD base por item para el gauge como ejemplo de métrica de "Valor de Pipeline")
-                if (row.Prioridad === 1) ppt += 10000;
-                else if (row.Prioridad === 2) ppt += 5000;
-                else if (row.Prioridad === 3) ppt += 1000;
 
                 const est = row.estado_compra || 'desconocido';
                 stateMap[est] = (stateMap[est] || 0) + 1;
@@ -69,7 +62,7 @@ export default function AnaliticaPage() {
                 dptoMap[dp] = (dptoMap[dp] || 0) + 1;
             });
 
-            setKpis({ totalProductos: totProd, completados, presupuestoRef: ppt });
+            setKpis({ totalProductos: totProd, completados });
 
             setDatosEstado(Object.keys(stateMap).map(k => ({
                 name: k.replace(/_/g, ' ').toUpperCase(),
@@ -137,7 +130,10 @@ export default function AnaliticaPage() {
             {/* ENCABEZADO Y ACCIONES */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Capa Analítica</h1>
+                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                        <PieChart className="w-8 h-8 mr-3 text-red-600 hidden md:block" />
+                        Capa Analítica
+                    </h1>
                     <p className="text-sm font-bold text-gray-400 tracking-widest uppercase mt-1">Cuadro de Mando Ejecutivo</p>
                 </div>
                 
@@ -159,13 +155,13 @@ export default function AnaliticaPage() {
             ) : (
                 <>
                     {/* TARJETAS DE KPIs */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center space-x-4">
                             <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center">
                                 <PackageOpen className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Sourcing</p>
+                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Productos Prospectados</p>
                                 <p className="text-3xl font-black text-gray-900">{kpis.totalProductos}</p>
                             </div>
                         </div>
@@ -175,18 +171,8 @@ export default function AnaliticaPage() {
                                 <TrendingUp className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Avanzados / En Firme</p>
+                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Productos Revisados</p>
                                 <p className="text-3xl font-black text-gray-900">{kpis.completados}</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center space-x-4">
-                            <div className="w-14 h-14 bg-green-50 text-green-500 rounded-full flex items-center justify-center">
-                                <DollarSign className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Pipeline Estimado</p>
-                                <p className="text-3xl font-black text-gray-900">${(kpis.presupuestoRef / 1000).toFixed(1)}k</p>
                             </div>
                         </div>
                     </div>

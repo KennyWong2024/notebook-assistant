@@ -41,7 +41,7 @@ export default function BandejaPendientes() {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
             <div className="mb-8 md:mb-12 flex flex-col space-y-6 md:space-y-0 md:flex-row md:items-end md:justify-between">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
@@ -81,13 +81,45 @@ export default function BandejaPendientes() {
                     <p className="text-gray-500 mt-2">Intenta buscar con otra palabra clave o proveedor.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
-                    {pendientesFiltrados.map((prod) => (
-                        <TarjetaPendiente
-                            key={prod.id}
-                            producto={prod}
-                            onClick={setProductoSeleccionado}
-                        />
+                <div className="space-y-6">
+                    {Object.entries(
+                        pendientesFiltrados.reduce((acc, current) => {
+                            const feria = current.feria || 'Sin feria asignada';
+                            if(!acc[feria]) acc[feria] = [];
+                            acc[feria].push(current);
+                            return acc;
+                        }, {} as Record<string, typeof pendientesFiltrados>)
+                    )
+                    .sort(([feriaA], [feriaB]) => feriaA.localeCompare(feriaB))
+                    .map(([feria, productos]) => (
+                        <details key={feria} open className="group bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden open:pb-6">
+                            <summary className="flex items-center justify-between p-6 cursor-pointer select-none outline-none group-open:border-b group-open:border-gray-50 transition-colors">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-12 h-12 bg-gray-900 text-white rounded-2xl flex items-center justify-center shadow-md">
+                                        <ClipboardList className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-gray-900 tracking-tight">{feria}</h2>
+                                        <p className="text-sm font-bold text-gray-400 tracking-widest uppercase mt-0.5">{productos.length} REVISIONES PENDIENTES</p>
+                                    </div>
+                                </div>
+                                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 group-open:-rotate-180 transition-transform duration-300">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </summary>
+                            
+                            <div className="px-6 pt-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+                                    {productos.map((prod) => (
+                                        <TarjetaPendiente
+                                            key={prod.id}
+                                            producto={prod}
+                                            onClick={setProductoSeleccionado}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </details>
                     ))}
                 </div>
             )}

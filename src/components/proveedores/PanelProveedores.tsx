@@ -57,7 +57,7 @@ export default function PanelProveedores() {
     };
 
     return (
-        <div className="space-y-8">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
             <div className="mb-8 md:mb-12 flex flex-col space-y-6 md:space-y-0 md:flex-row md:items-end md:justify-between">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">

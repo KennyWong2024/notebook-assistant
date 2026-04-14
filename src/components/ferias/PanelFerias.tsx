@@ -137,7 +137,7 @@ export default function PanelFerias() {
     };
 
     return (
-        <div className="space-y-8">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
             {/* ENCABEZADO */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-6 gap-4">
                 <div>

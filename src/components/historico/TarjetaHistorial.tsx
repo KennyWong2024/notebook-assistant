@@ -63,9 +63,14 @@ export default function TarjetaHistorial({ producto, onClick }: TarjetaHistorial
                     <h3 className="font-black text-lg text-gray-900 leading-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
                         {producto.nombre_rapido || producto.codigo_trazabilidad}
                     </h3>
-                    <p className="text-sm font-medium text-gray-500 mt-1 line-clamp-1">
-                        {producto.proveedor || 'Sin proveedor'}
-                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                        <p className="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md tracking-wider">
+                            {producto.codigo_trazabilidad}
+                        </p>
+                        <p className="text-sm font-medium text-gray-500 line-clamp-1">
+                            {producto.proveedor || 'Sin proveedor'}
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex items-end justify-between mt-2">
