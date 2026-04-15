@@ -38,10 +38,11 @@ export default function TarjetaProducto({ index, producto, totalProductos, onUpd
             {/* Nombre del Producto - Padding aumentado para armonía */}
             <div>
                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">
-                    Producto {index + 1} <span className="text-[10px] normal-case font-medium text-gray-400 ml-1">(Opcional)</span>
+                    Producto {index + 1} <span className="text-red-500">*</span>
                 </label>
                 <input
                     type="text"
+                    required
                     value={producto.nombre}
                     onChange={(e) => onUpdate('nombre', e.target.value)}
                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-600 outline-none font-bold text-gray-800 transition-all"

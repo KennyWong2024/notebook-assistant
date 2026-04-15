@@ -121,11 +121,9 @@ export default function FormularioCaptura() {
 
         if (!feriaActiva) return alert("Debes tener una feria activa seleccionada para guardar.");
 
-        if (productos.length > 1) {
-            const faltanNombres = productos.some(p => !p.nombre.trim());
-            if (faltanNombres) {
-                return alert("Al capturar múltiples productos, es obligatorio asignarle un Nombre/Artículo a cada uno para poder diferenciarlos.");
-            }
+        const faltanNombres = productos.some(p => !p.nombre.trim());
+        if (faltanNombres) {
+            return alert("Agrega el Nombre/Artículo a los productos antes de continuar.");
         }
 
         setLoading(true);

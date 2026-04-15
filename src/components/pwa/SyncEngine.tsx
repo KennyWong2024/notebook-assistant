@@ -17,10 +17,10 @@ export default function SyncEngine() {
 
     const flushQueue = useCallback(async () => {
         if (!navigator.onLine || isSyncing) return;
-        
+
         const pendientes = await obtenerProspectosPendientes();
         setPendientesCount(pendientes.length);
-        
+
         if (pendientes.length === 0) return;
 
         setIsSyncing(true);
@@ -31,8 +31,8 @@ export default function SyncEngine() {
                 let providerId;
                 const provNameTrimmed = prospecto.nombre_empresa;
                 const { data: provExistentes, error: errProvSearch } = await supabase.schema('sourcing').from('proveedores').select('id').ilike('nombre_empresa', provNameTrimmed).limit(1);
-                
-                if (errProvSearch) throw errProvSearch; // abort on timeout
+
+                if (errProvSearch) throw errProvSearch;
 
                 if (provExistentes && provExistentes.length > 0) {
                     providerId = provExistentes[0].id;
@@ -48,9 +48,9 @@ export default function SyncEngine() {
 
                 // 2. Interacción y Tarjeta
                 const { error: errInt } = await supabase.schema('sourcing').from('proveedor_feria_interacciones').insert({
-                    id_proveedor: providerId, 
-                    id_feria: prospecto.id_feria, 
-                    creado_por: prospecto.creado_por, 
+                    id_proveedor: providerId,
+                    id_feria: prospecto.id_feria,
+                    creado_por: prospecto.creado_por,
                     notas_generales: prospecto.notas_generales || null,
                     email_contacto: prospecto.email_contacto || null
                 });
@@ -80,7 +80,7 @@ export default function SyncEngine() {
                         prioridad: prod.prioridad,
                         estado_compra: 'borrador'
                     }).select().single();
-                    
+
                     if (errProd) throw errProd;
 
                     for (const [idx, f] of prod.fotos.entries()) {
@@ -105,7 +105,7 @@ export default function SyncEngine() {
 
                 // EXITOSO: Eliminar de HDD Local
                 await eliminarProspectoLocal(prospecto.id_local);
-                
+
                 // Refrescar contador local iteración a iteración
                 const left = await obtenerProspectosPendientes();
                 setPendientesCount(left.length);
@@ -140,13 +140,13 @@ export default function SyncEngine() {
             const arr = await obtenerProspectosPendientes();
             setPendientesCount(arr.length);
         };
-        
+
         pollColaLocal();
-        
+
         // Timer de escaneo principal
         let interval: NodeJS.Timeout;
         if (isOnline) {
-             interval = setInterval(() => {
+            interval = setInterval(() => {
                 flushQueue();
             }, 10000); // 10 Segundos
         }
@@ -176,9 +176,9 @@ export default function SyncEngine() {
 
     return (
         <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border transition-all ${isSyncing ? "bg-yellow-50 border-yellow-200" : "bg-yellow-50 border-yellow-200 cursor-pointer hover:bg-yellow-100"}`} onClick={() => !isSyncing && flushQueue()}>
-             {isSyncing ? <Loader2 className="w-4 h-4 text-yellow-600 animate-spin" /> : <CloudUpload className="w-4 h-4 text-yellow-600" />}
-             <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">{isSyncing ? "Subiendo..." : "Esperando Red"}</span>
-             <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1.5 rounded-full font-black ml-1">{pendientesCount}</span>
+            {isSyncing ? <Loader2 className="w-4 h-4 text-yellow-600 animate-spin" /> : <CloudUpload className="w-4 h-4 text-yellow-600" />}
+            <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">{isSyncing ? "Subiendo..." : "Esperando Red"}</span>
+            <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1.5 rounded-full font-black ml-1">{pendientesCount}</span>
         </div>
     );
 }

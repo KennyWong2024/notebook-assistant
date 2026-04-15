@@ -37,7 +37,6 @@ export default function BuscadorProveedor({ value, onChange }: Props) {
         <div className="relative">
             <input
                 type="text"
-                required
                 value={value}
                 onFocus={() => setShowSugerencias(true)}
                 onBlur={() => setTimeout(() => setShowSugerencias(false), 200)}
