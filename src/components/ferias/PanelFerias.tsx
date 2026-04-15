@@ -10,6 +10,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import FeriaCard from "./FeriaCard";
 import FeriaFormModal from "./FeriaFormModal";
 import ContenedorPagina from "@/components/ui/ContenedorPagina";
+import BotonFlotante from "@/components/ui/BotonFlotante";
 
 export default function PanelFerias() {
     const [ferias, setFerias] = useState<Fair[]>([]);
@@ -60,6 +61,8 @@ export default function PanelFerias() {
     // ---------------- LÓGICA DE FECHAS Y FILTROS ----------------
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
+
+    const canManageFerias = userRole === 'it' || userRole === 'director';
 
     const feriasFiltradas = ferias.filter((feria) => {
         const fechaEval = feria.fecha_fin ? new Date(feria.fecha_fin) : new Date(feria.fecha_inicio);
@@ -233,11 +236,24 @@ export default function PanelFerias() {
                 isLoading={isDeleting}
             />
 
+            {/* MODAL SELECTOR DE ASIGNACIÓN */}
             {feriaParaAsignar && (
                 <ModalAsignacionFeria
                     feriaId={feriaParaAsignar.id}
                     feriaNombre={feriaParaAsignar.nombre}
                     onClose={() => setFeriaParaAsignar(null)}
+                />
+            )}
+
+            {/* BOTÓN FLOTANTE MÓVIL (Solo para IT/Directores en esta vista) */}
+            {canManageFerias && (
+                <BotonFlotante
+                    onClick={() => {
+                        setFeriaEditando(null);
+                        setModalError("");
+                        setSuccessMessage("");
+                        setIsModalOpen(true);
+                    }}
                 />
             )}
         </ContenedorPagina>

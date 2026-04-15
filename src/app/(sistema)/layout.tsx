@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import SyncEngine from "@/components/pwa/SyncEngine";
+import BotonFlotante from "@/components/ui/BotonFlotante";
 
 export default function SistemaLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -60,10 +61,10 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
 
                 {/* Logo Global Clickable */}
                 <Link href="/dashboard" className="flex items-center">
-                    <img 
-                        src="/logo.png" 
-                        alt="Pequeño Mundo" 
-                        className="h-8 md:h-10 w-auto object-contain cursor-pointer transition-transform hover:scale-105 active:scale-95" 
+                    <img
+                        src="/logo.png"
+                        alt="Pequeño Mundo"
+                        className="h-8 md:h-10 w-auto object-contain cursor-pointer transition-transform hover:scale-105 active:scale-95"
                     />
                 </Link>
 
@@ -156,13 +157,11 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
             </div>
 
             {/* =========================================
-                 FAB: BOTÓN DE CAPTURA FLOTANTE (Móvil)
+                 FAB: BOTÓN GLOBAL DE CAPTURA (Móvil)
             ========================================= */}
-            <Link href="/captura" className="md:hidden fixed bottom-20 right-4 z-50 flex flex-col items-center group">
-                <div className="bg-red-600 text-white p-4 rounded-full shadow-xl shadow-red-200/50 flex items-center justify-center transform transition-transform active:scale-95 border-4 border-white/80">
-                    <Plus className="w-7 h-7 stroke-[3]" />
-                </div>
-            </Link>
+            {pathname !== '/ferias' && (
+                <BotonFlotante href="/captura" />
+            )}
 
             {/* =========================================
                  MOBILE BOTTOM NAV (4 Elementos)
