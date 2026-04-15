@@ -9,6 +9,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import UserFormModal from "@/components/admin/UserFormModal";
 import ResetPasswordModal from "@/components/admin/ResetPasswordModal";
 import ContenedorPagina from "@/components/ui/ContenedorPagina";
+import BotonFlotante from "@/components/ui/BotonFlotante";
 
 export default function UsuariosPage() {
     const [usuarios, setUsuarios] = useState<Profile[]>([]);
@@ -140,7 +141,8 @@ export default function UsuariosPage() {
                     <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Gestión de Accesos</h1>
                     <p className="text-sm text-gray-500 mt-1 font-medium">Administra los permisos y el personal.</p>
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-2xl font-bold flex justify-center items-center space-x-2 transition-all shadow-lg shadow-red-100 active:scale-95">
+                {/* El botón desktop */}
+                <button onClick={() => setIsModalOpen(true)} className="hidden md:flex w-full md:w-auto bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-2xl font-bold justify-center items-center space-x-2 transition-all shadow-lg shadow-red-100 active:scale-95">
                     <UserPlus className="w-5 h-5" />
                     <span>Nuevo Colaborador</span>
                 </button>
@@ -297,6 +299,13 @@ export default function UsuariosPage() {
                 description={<>Estás a punto de {confirmModal.user?.estado_activo ? "bloquear" : "restaurar"} el acceso de <strong className="text-gray-900">{confirmModal.user?.nombre_completo}</strong> al sistema.</>}
                 variant={confirmModal.user?.estado_activo ? "danger" : "success"}
             />
+
+            {/* BOTÓN FLOTANTE */}
+            <BotonFlotante
+                onClick={() => setIsModalOpen(true)}
+                icon={<UserPlus className="w-6 h-6 stroke-[2.5]" />}
+            />
+
         </ContenedorPagina>
     );
 }

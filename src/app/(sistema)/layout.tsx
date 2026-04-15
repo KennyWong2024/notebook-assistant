@@ -159,7 +159,7 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
             {/* =========================================
                  FAB: BOTÓN GLOBAL DE CAPTURA (Móvil)
             ========================================= */}
-            {pathname !== '/ferias' && (
+            {!['/ferias', '/admin', '/proveedores', '/historico', '/perfil'].includes(pathname) && (
                 <BotonFlotante href="/captura" />
             )}
 
