@@ -282,11 +282,11 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Proveedor (Fábrica) <span className="text-red-500">*</span></label>
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Proveedor (Fábrica)</label>
                                         <div className="relative">
                                             <Building2 className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
                                             <input
-                                                type="text" required
+                                                type="text"
                                                 value={formData.proveedor_nombre} onChange={e => setFormData({ ...formData, proveedor_nombre: e.target.value })}
                                                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none text-sm font-medium text-gray-800 transition-all"
                                             />
