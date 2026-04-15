@@ -1,136 +1,199 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState, useEffect } from "react";
 import { ViewHistorialProducto } from "@/types/database";
-import { Loader2, BookOpen, Search } from "lucide-react";
+import { Loader2, BookOpen, Search, ArrowLeft, ChevronRight, Folder, ChevronLeft } from "lucide-react";
 
 import BuscadorMagico from "@/components/ui/BuscadorMagico";
 import TarjetaHistorial from "@/components/historico/TarjetaHistorial";
 import ModalDetalleHistorial from "@/components/historico/ModalDetalleHistorial";
+import { getResumenFerias, getProductosPaginados } from "@/actions/productos";
 
-export default function HistorialPage() {
+type ResumenFeria = { feria: string; cantidad_productos: number };
+
+export default function PanelHistorico() {
+    const [resumenFerias, setResumenFerias] = useState<ResumenFeria[]>([]);
     const [productos, setProductos] = useState<ViewHistorialProducto[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
+    const [feriaSeleccionada, setFeriaSeleccionada] = useState<string | null>(null);
+    const [paginaActual, setPaginaActual] = useState(1);
+    const [totalPaginas, setTotalPaginas] = useState(1);
+    const POR_PAGINA = 20;
 
+    // 1. Cargar el resumen de ferias al inicio
     useEffect(() => {
-        const fetchHistorial = async () => {
-            try {
-                setLoading(true);
-                const { data, error } = await supabase
-                    .schema('sourcing')
-                    .from('v_historial_productos')
-                    .select('*')
-                    .order('codigo_trazabilidad', { ascending: false });
-
-                if (error) throw error;
-                setProductos(data || []);
-            } catch (error) {
-                console.error("Error cargando historial:", error);
-            } finally {
-                setLoading(false);
+        const fetchFerias = async () => {
+            setLoading(true);
+            const res = await getResumenFerias();
+            if (res.success && res.data) {
+                setResumenFerias(res.data);
             }
+            setLoading(false);
         };
-
-        fetchHistorial();
+        fetchFerias();
     }, []);
 
-    const productosFiltrados = useMemo(() => {
-        if (!searchTerm.trim()) return productos;
-        const terms = searchTerm.toLowerCase().split(" ");
+    // 2. Cargar productos cuando cambia la feria, la página o hay búsqueda
+    useEffect(() => {
+        if (!feriaSeleccionada && !searchTerm.trim()) {
+            setProductos([]);
+            return;
+        }
 
-        return productos.filter(p => {
-            const searchableText = `
-                ${p.nombre_rapido || ''} 
-                ${p.proveedor || ''} 
-                ${p.codigo_trazabilidad || ''} 
-                ${p.feria || ''}
-                ${p.categoria || ''}
-                ${p.departamento || ''}
-            `.toLowerCase();
+        const fetchProductos = async () => {
+            setLoading(true);
+            const res = await getProductosPaginados(feriaSeleccionada, searchTerm, paginaActual, POR_PAGINA);
 
-            return terms.every(term => searchableText.includes(term));
-        });
-    }, [productos, searchTerm]);
+            if (res.success && res.data) {
+                setProductos(res.data);
+                setTotalPaginas(res.totalPaginas || 1);
+            }
+            setLoading(false);
+        };
+
+        const timer = setTimeout(() => {
+            fetchProductos();
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [feriaSeleccionada, searchTerm, paginaActual]);
+
+    useEffect(() => {
+        setPaginaActual(1);
+    }, [feriaSeleccionada, searchTerm]);
+
+    const handleVolver = () => {
+        setFeriaSeleccionada(null);
+        setSearchTerm("");
+        setPaginaActual(1);
+    };
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 min-h-screen">
-            <div className="mb-8 md:mb-12 flex flex-col space-y-6 md:space-y-0 md:flex-row md:items-end md:justify-between">
+        <div className="p-4 md:p-10 max-w-5xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 min-h-screen flex flex-col">
+
+            {/* Header y Buscador */}
+            <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-end md:justify-between flex-shrink-0">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
-                        <BookOpen className="w-8 h-8 mr-3 text-red-600 hidden md:block" />
+                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                        <BookOpen className="w-6 h-6 md:w-8 md:h-8 mr-3 text-red-600 hidden md:block" />
                         Historial de Compras
                     </h1>
-                    <p className="text-gray-500 mt-2 font-medium">Busca y revisa la ficha técnica de los productos procesados.</p>
+                    <p className="text-sm md:text-base text-gray-500 mt-1 md:mt-2 font-medium">
+                        {feriaSeleccionada && !searchTerm ? `Explorando: ${feriaSeleccionada}` : 'Busca y revisa fichas técnicas.'}
+                    </p>
                 </div>
 
-                <div className="w-full md:w-[400px] lg:w-[500px]">
+                <div className="w-full md:w-[400px]">
                     <BuscadorMagico
                         valor={searchTerm}
                         onChange={setSearchTerm}
-                        placeholder="Ej. Ugreen, Soporte, CAN-SOP..."
+                        placeholder="Ej. Ugreen, Soporte..."
                     />
                 </div>
             </div>
 
-            {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
-                </div>
-            ) : productosFiltrados.length === 0 ? (
-                <div className="bg-white rounded-[2rem] border border-gray-100 p-12 flex flex-col items-center justify-center text-center mt-8">
-                    <div className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900">No encontramos resultados</h3>
-                    <p className="text-gray-500 mt-2">Intenta buscar con otra palabra clave o proveedor.</p>
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    {Object.entries(
-                        productosFiltrados.reduce((acc, current) => {
-                            const feria = current.feria || 'Sin feria asignada';
-                            if(!acc[feria]) acc[feria] = [];
-                            acc[feria].push(current);
-                            return acc;
-                        }, {} as Record<string, typeof productosFiltrados>)
-                    )
-                    .sort(([feriaA], [feriaB]) => feriaA.localeCompare(feriaB))
-                    .map(([feria, productos]) => (
-                        <details key={feria} open className="group bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden open:pb-6">
-                            <summary className="flex items-center justify-between p-6 cursor-pointer select-none outline-none group-open:border-b group-open:border-gray-50 transition-colors">
-                                <div className="flex items-center space-x-4">
-                                    <div className="w-12 h-12 bg-gray-900 text-white rounded-2xl flex items-center justify-center shadow-md">
-                                        <BookOpen className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-black text-gray-900 tracking-tight">{feria}</h2>
-                                        <p className="text-sm font-bold text-gray-400 tracking-widest uppercase mt-0.5">{productos.length} PRODUCTOS HISTÓRICOS</p>
-                                    </div>
-                                </div>
-                                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 group-open:-rotate-180 transition-transform duration-300">
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                </div>
-                            </summary>
-                            
-                            <div className="px-6 pt-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
-                                    {productos.map(producto => (
-                                        <TarjetaHistorial
-                                            key={producto.id}
-                                            producto={producto}
-                                            onClick={setProductoSeleccionado}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        </details>
-                    ))}
-                </div>
+            {/* Navegación (Botón Volver) */}
+            {feriaSeleccionada && !searchTerm && (
+                <button
+                    onClick={handleVolver}
+                    className="flex items-center text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-full w-fit flex-shrink-0"
+                >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Volver a Ferias
+                </button>
             )}
 
+            {/* Contenido Principal */}
+            <div className="flex-1">
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+                    </div>
+                ) : searchTerm.trim() || feriaSeleccionada ? (
+                    // VIEW 2: LISTA DE PRODUCTOS
+                    productos.length === 0 ? (
+                        <div className="bg-white rounded-3xl border border-gray-100 p-12 flex flex-col items-center justify-center text-center mt-8">
+                            <div className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                                <Search className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">No encontramos resultados</h3>
+                            <p className="text-gray-500 mt-2">Intenta buscar con otra palabra clave.</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col h-full">
+                            {/* Lista de tarjetas */}
+                            <div className="flex flex-col space-y-3 md:space-y-4 mb-8">
+                                {productos.map(producto => (
+                                    <TarjetaHistorial
+                                        key={producto.id}
+                                        producto={producto}
+                                        onClick={setProductoSeleccionado}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Controles de Paginación */}
+                            {totalPaginas > 1 && (
+                                <div className="flex items-center justify-center space-x-4 mt-auto pb-10">
+                                    <button
+                                        onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                        disabled={paginaActual === 1}
+                                        className="p-2 md:px-4 md:py-2 flex items-center justify-center bg-white border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        <ChevronLeft className="w-5 h-5 md:mr-1" />
+                                        <span className="hidden md:inline">Anterior</span>
+                                    </button>
+
+                                    <span className="text-sm font-bold text-gray-500">
+                                        Página {paginaActual} de {totalPaginas}
+                                    </span>
+
+                                    <button
+                                        onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                                        disabled={paginaActual === totalPaginas}
+                                        className="p-2 md:px-4 md:py-2 flex items-center justify-center bg-white border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        <span className="hidden md:inline">Siguiente</span>
+                                        <ChevronRight className="w-5 h-5 md:ml-1" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )
+                ) : (
+                    // VIEW 1: LISTADO DE FERIAS
+                    <div className="flex flex-col space-y-3 md:space-y-4">
+                        {resumenFerias.length === 0 ? (
+                            <div className="text-center text-gray-500 py-10">No hay ferias registradas.</div>
+                        ) : (
+                            resumenFerias.map((item) => (
+                                <div
+                                    key={item.feria}
+                                    onClick={() => setFeriaSeleccionada(item.feria)}
+                                    className="group bg-white rounded-2xl md:rounded-3xl border border-gray-100 p-4 md:p-6 cursor-pointer hover:border-red-200 hover:shadow-md transition-all flex items-center justify-between"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-12 h-12 bg-gray-50 group-hover:bg-red-50 text-gray-400 group-hover:text-red-500 rounded-2xl flex items-center justify-center transition-colors">
+                                            <Folder className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base md:text-xl font-black text-gray-900">{item.feria}</h2>
+                                            <p className="text-xs md:text-sm font-bold text-gray-400 mt-0.5">{item.cantidad_productos} Productos</p>
+                                        </div>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-red-500 group-hover:text-white transition-all">
+                                        <ChevronRight className="w-5 h-5" />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Modal de Detalle */}
             {productoSeleccionado && (
                 <ModalDetalleHistorial
                     idProducto={productoSeleccionado}
