@@ -24,9 +24,9 @@ export default function FeriaCard({ feria, userRole, onEdit, onDelete, onAssign 
     return (
         <div className={`bg-white rounded-3xl p-6 border ${isPasada ? 'border-gray-100 opacity-75' : 'border-gray-200 shadow-sm hover:shadow-md'} transition-all relative overflow-hidden flex flex-col justify-between group`}>
 
-            {/* Botones de acción rápidos (Solo Admin) - AHORA VISIBLES SIEMPRE */}
+            {/* Botones de acción rápidos (Solo Admin) */}
             {isAdmin && (
-                <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <div className="absolute top-4 right-4 flex space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
                     <button onClick={() => onEdit(feria)} className="p-2 bg-white border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 rounded-xl transition-all shadow-sm">
                         <Edit2 className="w-4 h-4" />
                     </button>
@@ -38,7 +38,7 @@ export default function FeriaCard({ feria, userRole, onEdit, onDelete, onAssign 
 
             <div>
                 {/* Etiqueta de Estado */}
-                <div className={`absolute top-0 right-0 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl transition-opacity ${!isPasada ? 'group-hover:opacity-0' : ''} ${isActiva ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`absolute top-0 right-0 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl transition-opacity ${!isPasada ? 'opacity-0 md:group-hover:opacity-0' : ''} ${isActiva ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
                     {isActiva ? 'Activa' : 'Finalizada'}
                 </div>
 
@@ -46,20 +46,22 @@ export default function FeriaCard({ feria, userRole, onEdit, onDelete, onAssign 
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isPasada ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-600'}`}>
                         <Briefcase className="w-6 h-6" />
                     </div>
-                    <div className="pr-12">
+                    <div className="pr-16 md:pr-12">
                         <h3 className={`font-black text-lg leading-tight transition-colors ${isPasada ? 'text-gray-600' : 'text-gray-900 group-hover:text-red-600'}`}>
                             {feria.nombre}
                         </h3>
 
                         <div className="mt-3 space-y-1.5 mb-4">
                             <div className="flex items-center text-sm text-gray-500 font-medium">
-                                <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                                {feria.region ? `${feria.region}, ${feria.pais}` : (feria.pais || 'Ubicación no definida')}
+                                <MapPin className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                                <span className="truncate">{feria.region ? `${feria.region}, ${feria.pais}` : (feria.pais || 'Ubicación no definida')}</span>
                             </div>
                             <div className="flex items-center text-sm text-gray-500 font-medium">
-                                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                {new Date(feria.fecha_inicio).toLocaleDateString()}
-                                {feria.fecha_fin && ` - ${new Date(feria.fecha_fin).toLocaleDateString()}`}
+                                <Calendar className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                                <span className="truncate">
+                                    {new Date(feria.fecha_inicio).toLocaleDateString()}
+                                    {feria.fecha_fin && ` - ${new Date(feria.fecha_fin).toLocaleDateString()}`}
+                                </span>
                             </div>
                         </div>
                     </div>
