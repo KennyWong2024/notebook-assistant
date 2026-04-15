@@ -30,7 +30,7 @@ export default function CamaraWidget({ onImageCaptured, label }: Props) {
             {loading ? (
                 <>
                     <Loader2 className="w-5 h-5 animate-spin text-red-500" />
-                    <span className="text-[10px] uppercase tracking-widest">Comprimiendo...</span>
+                    <span className="text-[10px] uppercase tracking-widest">Procesando...</span>
                 </>
             ) : (
                 <>
@@ -40,7 +40,7 @@ export default function CamaraWidget({ onImageCaptured, label }: Props) {
             )}
             <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg, image/png, image/webp, image/heic, image/heif, image/*"
                 capture="environment"
                 className="hidden"
                 onChange={handleCapture}

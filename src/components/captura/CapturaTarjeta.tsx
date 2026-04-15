@@ -36,7 +36,13 @@ export default function CapturaTarjeta({ onCaptured }: Props) {
                             <label className="cursor-pointer bg-white text-gray-900 px-4 py-2 rounded-xl font-bold text-sm flex items-center space-x-2 shadow-lg">
                                 <RefreshCw className="w-4 h-4" />
                                 <span>Retomar Foto</span>
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCapture} />
+                                <input
+                                    type="file"
+                                    accept="image/jpeg, image/png, image/heic, image/heif, image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    onChange={handleCapture}
+                                />
                             </label>
                         </div>
                     </>
@@ -46,9 +52,16 @@ export default function CapturaTarjeta({ onCaptured }: Props) {
                             <Camera className={`w-8 h-8 ${loading ? 'animate-pulse' : ''}`} />
                         </div>
                         <span className="text-sm font-bold text-gray-500">
-                            {loading ? 'Procesando...' : 'Enfoca la tarjeta y toca aquí'}
+                            {loading ? 'Procesando formato...' : 'Enfoca la tarjeta y toca aquí'}
                         </span>
-                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCapture} />
+                        <input
+                            type="file"
+                            accept="image/jpeg, image/png, image/heic, image/heif, image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleCapture}
+                            disabled={loading}
+                        />
                     </label>
                 )}
             </div>
