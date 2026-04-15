@@ -8,6 +8,7 @@ import BuscadorMagico from "@/components/ui/BuscadorMagico";
 import TarjetaHistorial from "@/components/historico/TarjetaHistorial";
 import ModalDetalleHistorial from "@/components/historico/ModalDetalleHistorial";
 import { getResumenFerias, getProductosPaginados } from "@/actions/productos";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 type ResumenFeria = { feria: string; cantidad_productos: number };
 
@@ -71,12 +72,11 @@ export default function PanelHistorico() {
     };
 
     return (
-        <div className="p-4 md:p-10 max-w-5xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 min-h-screen flex flex-col">
-
+        <ContenedorPagina>
             {/* Header y Buscador */}
             <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-end md:justify-between flex-shrink-0">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center">
                         <BookOpen className="w-6 h-6 md:w-8 md:h-8 mr-3 text-red-600 hidden md:block" />
                         Historial de Compras
                     </h1>
@@ -200,6 +200,6 @@ export default function PanelHistorico() {
                     onClose={() => setProductoSeleccionado(null)}
                 />
             )}
-        </div>
+        </ContenedorPagina>
     );
 }

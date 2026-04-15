@@ -9,6 +9,7 @@ import ModalAsignacionFeria from "./ModalAsignacionFeria";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import FeriaCard from "./FeriaCard";
 import FeriaFormModal from "./FeriaFormModal";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 export default function PanelFerias() {
     const [ferias, setFerias] = useState<Fair[]>([]);
@@ -137,11 +138,11 @@ export default function PanelFerias() {
     };
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <ContenedorPagina>
             {/* ENCABEZADO */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-6 gap-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                    <h1 className="text-3xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center">
                         <Briefcase className="w-8 h-8 mr-3 text-red-600 hidden md:block" />
                         Gestión de Ferias
                     </h1>
@@ -239,6 +240,6 @@ export default function PanelFerias() {
                     onClose={() => setFeriaParaAsignar(null)}
                 />
             )}
-        </div>
+        </ContenedorPagina>
     );
 }

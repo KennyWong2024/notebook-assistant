@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, Lock, Mail, Save, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 export default function PanelPerfil() {
     const [loading, setLoading] = useState(true);
@@ -100,7 +101,7 @@ export default function PanelPerfil() {
     }
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <ContenedorPagina>
             <div className="mb-8">
                 <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Mi Perfil</h1>
                 <p className="text-sm text-gray-500 mt-1 font-medium">Gestiona tu información personal y seguridad.</p>
@@ -210,6 +211,6 @@ export default function PanelPerfil() {
                     </div>
                 </form>
             </div>
-        </div>
+        </ContenedorPagina>
     );
 }

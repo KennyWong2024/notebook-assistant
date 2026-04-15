@@ -7,6 +7,7 @@ import { Loader2, Building2, Search, ChevronLeft, ChevronRight } from "lucide-re
 import BuscadorMagico from "@/components/ui/BuscadorMagico";
 import TarjetaProveedor from "./TarjetaProveedor";
 import { getProveedoresPaginados } from "@/actions/proveedores";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 export default function PanelProveedores() {
     const [proveedores, setProveedores] = useState<ViewDirectorioProveedor[]>([]);
@@ -40,11 +41,11 @@ export default function PanelProveedores() {
     }, [searchTerm]);
 
     return (
-        <div className="p-4 md:p-10 max-w-5xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 min-h-screen flex flex-col">
-
-            <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-end md:justify-between flex-shrink-0">
+        <ContenedorPagina>
+            {/* Header: Nota el mb-6 md:mb-8 y el tamaño de texto text-2xl md:text-3xl */}
+            <div className="mb-6 md:mb-8 flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-end md:justify-between flex-shrink-0">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center">
                         <Building2 className="w-6 h-6 md:w-8 md:h-8 mr-3 text-red-600 hidden md:block" />
                         Directorio de Proveedores
                     </h1>
@@ -113,6 +114,6 @@ export default function PanelProveedores() {
                     </div>
                 )}
             </div>
-        </div>
+        </ContenedorPagina>
     );
 }

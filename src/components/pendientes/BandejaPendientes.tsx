@@ -6,6 +6,7 @@ import { Loader2, LayoutGrid, ClipboardList, Search } from "lucide-react";
 import PanelEnriquecimiento from "./PanelEnriquecimiento";
 import TarjetaPendiente from "./TarjetaPendiente";
 import BuscadorMagico from "@/components/ui/BuscadorMagico";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 export default function BandejaPendientes() {
     const { pendientes, loading, error, refetch } = usePendientes();
@@ -41,12 +42,11 @@ export default function BandejaPendientes() {
     }
 
     return (
-        <div className="p-4 md:p-10 max-w-5xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 min-h-screen">
-
+        <ContenedorPagina>
             {/* Header y Buscador */}
             <div className="mb-6 md:mb-8 flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center">
                         <ClipboardList className="w-6 h-6 md:w-8 md:h-8 mr-3 text-red-600 hidden md:block" />
                         Mis Pendientes
                     </h1>
@@ -106,6 +106,6 @@ export default function BandejaPendientes() {
                     }}
                 />
             )}
-        </div>
+        </ContenedorPagina>
     );
 }

@@ -8,6 +8,7 @@ import { crearUsuario, alternarEstadoUsuario, restablecerContrasenaUsuario, camb
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import UserFormModal from "@/components/admin/UserFormModal";
 import ResetPasswordModal from "@/components/admin/ResetPasswordModal";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 export default function UsuariosPage() {
     const [usuarios, setUsuarios] = useState<Profile[]>([]);
@@ -133,7 +134,7 @@ export default function UsuariosPage() {
     };
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <ContenedorPagina>
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Gestión de Accesos</h1>
@@ -296,6 +297,6 @@ export default function UsuariosPage() {
                 description={<>Estás a punto de {confirmModal.user?.estado_activo ? "bloquear" : "restaurar"} el acceso de <strong className="text-gray-900">{confirmModal.user?.nombre_completo}</strong> al sistema.</>}
                 variant={confirmModal.user?.estado_activo ? "danger" : "success"}
             />
-        </div>
+        </ContenedorPagina>
     );
 }

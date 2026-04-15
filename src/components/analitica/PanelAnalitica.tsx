@@ -2,31 +2,31 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { 
-    Download, TrendingUp, DollarSign, PackageOpen, PieChart, BarChart4, Loader2, Building2
+import {
+    Download, TrendingUp, PackageOpen, PieChart, BarChart4, Loader2, Building2
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
     PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
 } from "recharts";
+import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 type KPI = {
     totalProductos: number;
     completados: number;
 };
 
-// Paleta del gráfico tipo PM (Rojos, Amarillos y grises de jerarquía)
 const COLORES_ESTADO = {
     'borrador': '#9ca3af',
-    'completado': '#ef4444', 
+    'completado': '#ef4444',
     'muestra_solicitada': '#f59e0b',
     'aprobado_gerencia': '#10b981',
     'orden_colocada': '#0ea5e9',
     'descartado': '#374151'
 };
 
-export default function AnaliticaPage() {
+export default function PanelAnalitica() {
     const [loading, setLoading] = useState(true);
     const [kpis, setKpis] = useState<KPI>({ totalProductos: 0, completados: 0 });
     const [datosEstado, setDatosEstado] = useState<any[]>([]);
@@ -40,13 +40,10 @@ export default function AnaliticaPage() {
     const cargarAnaliticas = async () => {
         setLoading(true);
         try {
-            // Cargar datos de la vista agregando a nivel general (O usando la vista analitica)
-            // Dado que la vista analítica contiene todo a nivel filas, la usaremos tanto para el Excel como para los stats del Dashboard visual
             const { data, error } = await supabase.schema('sourcing').from('v_analitica_productos').select('*');
             if (error) throw error;
             if (!data) return;
 
-            // Calcular KPIs
             let totProd = data.length;
             let completados = 0;
             const stateMap: Record<string, number> = {};
@@ -54,16 +51,13 @@ export default function AnaliticaPage() {
 
             data.forEach((row) => {
                 if (row.estado_compra !== 'borrador') completados++;
-
                 const est = row.estado_compra || 'desconocido';
                 stateMap[est] = (stateMap[est] || 0) + 1;
-
                 const dp = row.Dpto || 'Sin Departamento';
                 dptoMap[dp] = (dptoMap[dp] || 0) + 1;
             });
 
             setKpis({ totalProductos: totProd, completados });
-
             setDatosEstado(Object.keys(stateMap).map(k => ({
                 name: k.replace(/_/g, ' ').toUpperCase(),
                 value: stateMap[k],
@@ -73,7 +67,7 @@ export default function AnaliticaPage() {
             const formatDptos = Object.keys(dptoMap).map(k => ({
                 name: k,
                 productos: dptoMap[k]
-            })).sort((a,b) => b.productos - a.productos).slice(0, 5); // Top 5
+            })).sort((a, b) => b.productos - a.productos).slice(0, 5);
             setDatosDpto(formatDptos);
 
         } catch (error) {
@@ -96,26 +90,16 @@ export default function AnaliticaPage() {
                 return;
             }
 
-            // Crear Worksheet y Book de SheetJS
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Directorio e Historial");
 
-            // Personalización visual basica (anchos de columna)
             ws['!cols'] = [
-                { wch: 25 }, // Producto
-                { wch: 40 }, // Nota
-                { wch: 10 }, // Prioridad
-                { wch: 25 }, // Proveedor
-                { wch: 20 }, // Responsable
-                { wch: 20 }, // Dpto
-                { wch: 20 }, // Categoria
-                { wch: 10 }, // Foto
-                { wch: 50 }, // Nota General
+                { wch: 25 }, { wch: 40 }, { wch: 10 }, { wch: 25 },
+                { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 },
             ];
 
-            // Descargar Nativamente (sin viajes a servidor intermedios)
-            XLSX.writeFile(wb, `Reporte_Pequeño_Mundo_${new Date().toLocaleDateString().replace(/\//g,'-')}.xlsx`);
+            XLSX.writeFile(wb, `Reporte_Pequeño_Mundo_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
 
         } catch (error) {
             console.error(error);
@@ -126,24 +110,24 @@ export default function AnaliticaPage() {
     };
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* ENCABEZADO Y ACCIONES */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+        <ContenedorPagina>
+            {/* ENCABEZADO */}
+            <header className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center">
-                        <PieChart className="w-8 h-8 mr-3 text-red-600 hidden md:block" />
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center">
+                        <PieChart className="w-6 h-6 md:w-8 md:h-8 mr-3 text-red-600 hidden md:block" />
                         Capa Analítica
                     </h1>
                     <p className="text-sm font-bold text-gray-400 tracking-widest uppercase mt-1">Cuadro de Mando Ejecutivo</p>
                 </div>
-                
-                <button 
+
+                <button
                     onClick={handleExportExcel}
                     disabled={loading || isExporting}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold px-6 py-3 rounded-xl shadow-[0_4px_14px_0_rgba(22,163,74,0.39)] transition-all active:scale-95 flex items-center justify-center space-x-2"
+                    className="w-full md:w-auto bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold px-6 py-3 rounded-xl shadow-[0_4px_14px_0_rgba(22,163,74,0.39)] transition-all active:scale-95 flex items-center justify-center space-x-2"
                 >
                     {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                    <span>{isExporting ? 'Procesando XLSX...' : 'Descargar Reporte (Excel)'}</span>
+                    <span>{isExporting ? 'Procesando XLSX...' : 'Descargar Reporte'}</span>
                 </button>
             </header>
 
@@ -179,7 +163,7 @@ export default function AnaliticaPage() {
 
                     {/* SECCIÓN DE GRÁFICOS */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* GRÁFICO 1: ANILLO ESTADOS */}
+                        {/* GRÁFICO 1 */}
                         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
                             <div className="flex items-center space-x-2 mb-6">
                                 <PieChart className="w-5 h-5 text-gray-400" />
@@ -200,13 +184,13 @@ export default function AnaliticaPage() {
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
                                         </Pie>
-                                        <Tooltip 
+                                        <Tooltip
                                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                             itemStyle={{ fontWeight: 'bold' }}
                                         />
-                                        <Legend 
-                                            verticalAlign="bottom" 
-                                            height={36} 
+                                        <Legend
+                                            verticalAlign="bottom"
+                                            height={36}
                                             iconType="circle"
                                             formatter={(value) => <span className="text-xs font-bold text-gray-600">{value}</span>}
                                         />
@@ -215,11 +199,11 @@ export default function AnaliticaPage() {
                             </div>
                         </div>
 
-                        {/* GRÁFICO 2: TOP DEPARTAMENTOS */}
+                        {/* GRÁFICO 2 */}
                         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
                             <div className="flex items-center space-x-2 mb-6">
                                 <BarChart4 className="w-5 h-5 text-gray-400" />
-                                <h3 className="font-black text-gray-700 tracking-tight text-lg">Top Departamentos Prospectados</h3>
+                                <h3 className="font-black text-gray-700 tracking-tight text-lg">Top Departamentos</h3>
                             </div>
                             <div className="h-72 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -227,7 +211,7 @@ export default function AnaliticaPage() {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                         <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fontSize: 10, fontWeight: 'bold', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                                        <Tooltip 
+                                        <Tooltip
                                             cursor={{ fill: '#F3F4F6' }}
                                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                         />
@@ -237,19 +221,19 @@ export default function AnaliticaPage() {
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* TABLA BASE */}
                     <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-6">
                         <div className="flex items-center space-x-2">
-                             <Building2 className="w-5 h-5 text-gray-400" />
-                             <h3 className="font-black text-gray-700 tracking-tight text-lg">Resumen Global</h3>
+                            <Building2 className="w-5 h-5 text-gray-400" />
+                            <h3 className="font-black text-gray-700 tracking-tight text-lg">Resumen Global</h3>
                         </div>
                         <p className="text-gray-500 text-sm max-w-2xl">
-                             Este panel extrae directamente la recolección de todo el equipo en terreno de los servidores nativos usando la vista analítica validada. El acceso directo de esta información le pertenece únicamente a los gerentes y directores de su nivel.
+                            Este panel extrae directamente la recolección de todo el equipo en terreno de los servidores nativos. El acceso directo de esta información le pertenece únicamente a los gerentes y directores de su nivel.
                         </p>
                     </div>
                 </>
             )}
-        </div>
+        </ContenedorPagina>
     );
 }
