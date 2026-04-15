@@ -7,6 +7,8 @@ import { Loader2, Building2, Search, ChevronLeft, ChevronRight } from "lucide-re
 import BuscadorMagico from "@/components/ui/BuscadorMagico";
 import TarjetaProveedor from "./TarjetaProveedor";
 import { getProveedoresPaginados } from "@/actions/proveedores";
+import { getAllLocals } from "@/lib/offline-db";
+import { AlertCircle } from "lucide-react";
 import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 export default function PanelProveedores() {
@@ -15,16 +17,50 @@ export default function PanelProveedores() {
     const [searchTerm, setSearchTerm] = useState("");
     const [paginaActual, setPaginaActual] = useState(1);
     const [totalPaginas, setTotalPaginas] = useState(1);
+    const [isOfflineMode, setIsOfflineMode] = useState(false);
     const POR_PAGINA = 20;
 
     useEffect(() => {
         const fetchProveedores = async () => {
             setLoading(true);
-            const res = await getProveedoresPaginados(searchTerm, paginaActual, POR_PAGINA);
-
-            if (res.success && res.data) {
-                setProveedores(res.data);
-                setTotalPaginas(res.totalPaginas || 1);
+            setIsOfflineMode(false);
+            
+            if (navigator.onLine) {
+                try {
+                    const res = await getProveedoresPaginados(searchTerm, paginaActual, POR_PAGINA);
+                    if (res.success && res.data) {
+                        setProveedores(res.data);
+                        setTotalPaginas(res.totalPaginas || 1);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (err) {
+                    console.log("Fallo red Server Action -> Fallback local");
+                }
+            }
+            
+            // FALLBACK: MODO OFFLINE LECTURA LOCAL
+            setIsOfflineMode(true);
+            try {
+                const locales = await getAllLocals('proveedores_descubiertos');
+                let filtrados = locales;
+                if (searchTerm.trim() !== "") {
+                    const lowerTerm = searchTerm.toLowerCase();
+                    filtrados = locales.filter(p => 
+                        p.nombre_empresa?.toLowerCase().includes(lowerTerm) ||
+                        p.pais_origen?.toLowerCase().includes(lowerTerm)
+                    );
+                }
+                
+                const total = Math.ceil(filtrados.length / POR_PAGINA);
+                setTotalPaginas(total === 0 ? 1 : total);
+                
+                const startIndex = (paginaActual - 1) * POR_PAGINA;
+                const paginaData = filtrados.slice(startIndex, startIndex + POR_PAGINA);
+                
+                setProveedores(paginaData as ViewDirectorioProveedor[]);
+            } catch (err) {
+                console.error("Error leyendo offline DB", err);
             }
             setLoading(false);
         };
@@ -51,6 +87,13 @@ export default function PanelProveedores() {
                     </h1>
                     <p className="text-sm md:text-base text-gray-500 mt-1 md:mt-2 font-medium">Explora el catálogo universal y sus fábricas.</p>
                 </div>
+
+                {isOfflineMode && (
+                    <div className="flex items-center space-x-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-xl text-xs font-bold border border-yellow-200 shadow-sm animate-pulse">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Modo Offline: Mostrando catálogo de los últimos 14 días.</span>
+                    </div>
+                )}
 
                 <div className="w-full md:w-[400px]">
                     <BuscadorMagico

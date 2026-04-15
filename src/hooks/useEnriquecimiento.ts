@@ -11,22 +11,31 @@ export function useEnriquecimiento() {
 
     const cargarCatalogos = useCallback(async () => {
         try {
-            const [deptRes, catRes] = await Promise.all([
-                supabase.schema('sourcing').from('catalogo_departamentos').select('*').eq('estado_activo', true),
-                supabase.schema('sourcing').from('catalogo_categorias').select('*').eq('estado_activo', true)
-            ]);
+            if (navigator.onLine) {
+                const [deptRes, catRes] = await Promise.all([
+                    supabase.schema('sourcing').from('departamentos').select('*').eq('estado_activo', true),
+                    supabase.schema('sourcing').from('categorias').select('*').eq('estado_activo', true)
+                ]);
 
-            console.log("Respuesta Departamentos:", deptRes);
-            console.log("Respuesta Categorias:", catRes);
-
-            if (deptRes.error) throw deptRes.error;
-            if (catRes.error) throw catRes.error;
-
-            setDepartamentos(deptRes.data || []);
-            setCategorias(catRes.data || []);
+                if (!deptRes.error && !catRes.error) {
+                    setDepartamentos(deptRes.data || []);
+                    setCategorias(catRes.data || []);
+                    return;
+                }
+            }
+            throw new Error("Offline o error de consulta");
         } catch (err: any) {
-            console.error("Error cargando catálogos:", err);
-            setError("No se pudieron cargar las clasificaciones.");
+            console.log("Fallback modo offline para catálogos...");
+            try {
+                const depts = await import("@/lib/offline-db").then(m => m.getCatalogoLocal('departamentos'));
+                const cats = await import("@/lib/offline-db").then(m => m.getCatalogoLocal('categorias'));
+                
+                if (depts) setDepartamentos(depts);
+                if (cats) setCategorias(cats);
+            } catch (fallbackErr) {
+                console.error("Error cargando catálogos offline:", fallbackErr);
+                setError("No se pudieron cargar las clasificaciones en modo offline.");
+            }
         }
     }, []);
 

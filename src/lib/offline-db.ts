@@ -1,6 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
-
 export interface ProductoOffline {
     nombre_rapido: string;
     precio_referencia?: number;
@@ -11,7 +10,7 @@ export interface ProductoOffline {
 }
 
 export interface ProspectoOffline {
-    id_local: string; // uuid generado localmente
+    id_local: string;
     nombre_empresa: string;
     email_contacto: string;
     id_feria: string;
@@ -35,6 +34,20 @@ interface SourcingOfflineDB extends DBSchema {
         value: ProspectoOffline;
         indexes: { 'timestamp': number };
     };
+    catalogos_cache: {
+        key: string;
+        value: any;
+    };
+    proveedores_descubiertos: {
+        key: string;
+        value: any;
+        indexes: { 'timestamp': number };
+    };
+    productos_recientes: {
+        key: string;
+        value: any;
+        indexes: { 'timestamp': number };
+    };
 }
 
 let dbPromise: Promise<IDBPDatabase<SourcingOfflineDB>> | null = null;
@@ -42,12 +55,19 @@ let dbPromise: Promise<IDBPDatabase<SourcingOfflineDB>> | null = null;
 function initDB() {
     if (typeof window === 'undefined') return null;
     if (!dbPromise) {
-        dbPromise = openDB<SourcingOfflineDB>('sourcing_offline', 1, {
-            upgrade(db) {
-                const store = db.createObjectStore('prospectos_pendientes', {
-                    keyPath: 'id_local',
-                });
-                store.createIndex('timestamp', 'timestamp');
+        dbPromise = openDB<SourcingOfflineDB>('sourcing_offline', 2, {
+            upgrade(db, oldVersion) {
+                if (oldVersion < 1) {
+                    const store = db.createObjectStore('prospectos_pendientes', { keyPath: 'id_local' });
+                    store.createIndex('timestamp', 'timestamp');
+                }
+                if (oldVersion < 2) {
+                    db.createObjectStore('catalogos_cache');
+                    const storeProv = db.createObjectStore('proveedores_descubiertos', { keyPath: 'id' });
+                    storeProv.createIndex('timestamp', 'timestamp');
+                    const storeProd = db.createObjectStore('productos_recientes', { keyPath: 'id' });
+                    storeProd.createIndex('timestamp', 'timestamp');
+                }
             },
         });
     }
@@ -84,5 +104,52 @@ export async function marcarErrorProspectoLocal(id_local: string) {
         item.estado_subida = 'error';
         item.intento += 1;
         await db.put('prospectos_pendientes', item);
+    }
+}
+
+// ==== MASTER REPLICA (WORKING SET) ==== //
+
+export async function syncCatalogoLocal(key: string, data: any) {
+    const db = await initDB();
+    if (!db) return;
+    await db.put('catalogos_cache', data, key);
+}
+
+export async function getCatalogoLocal(key: string) {
+    const db = await initDB();
+    if (!db) return null;
+    return db.get('catalogos_cache', key);
+}
+
+export async function insertMultiple(storeName: 'proveedores_descubiertos' | 'productos_recientes', items: any[]) {
+    const db = await initDB();
+    if (!db) return;
+    const tx = db.transaction(storeName, 'readwrite');
+    for (const item of items) {
+        tx.store.put(item);
+    }
+    await tx.done;
+}
+
+export async function getAllLocals(storeName: 'proveedores_descubiertos' | 'productos_recientes') {
+    const db = await initDB();
+    if (!db) return [];
+    return db.getAll(storeName);
+}
+
+export async function cleanOld14Days() {
+    const db = await initDB();
+    if (!db) return;
+    const cutoff = Date.now() - (14 * 24 * 60 * 60 * 1000);
+    
+    for (const store of ['proveedores_descubiertos', 'productos_recientes'] as const) {
+        const tx = db.transaction(store, 'readwrite');
+        const index = tx.store.index('timestamp');
+        let cursor = await index.openCursor(IDBKeyRange.upperBound(cutoff));
+        while (cursor) {
+            await cursor.delete();
+            cursor = await cursor.continue();
+        }
+        await tx.done;
     }
 }

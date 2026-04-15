@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import SyncEngine from "@/components/pwa/SyncEngine";
+import WorkingSetSyncer from "@/components/pwa/WorkingSetSyncer";
 import BotonFlotante from "@/components/ui/BotonFlotante";
 
 export default function SistemaLayout({ children }: { children: React.ReactNode }) {
@@ -53,6 +54,7 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
 
     return (
         <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
+            <WorkingSetSyncer />
 
             {/* =========================================
                  HEADER GLOBAL (Móvil y Desktop) - EXTENDIDO 100%

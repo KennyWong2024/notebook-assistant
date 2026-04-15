@@ -44,40 +44,46 @@ export default function FormularioCaptura() {
     useEffect(() => {
         const fetchFerias = async () => {
             setCargandoFeria(true);
+            let feriasVigentes: Fair[] = [];
+
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
+                if (navigator.onLine) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data } = await supabase
+                            .schema('sourcing')
+                            .from('asignaciones_feria')
+                            .select('id_feria, ferias!inner(*)')
+                            .eq('id_usuario', user.id)
+                            .eq('ferias.estado_activo', true);
 
-                const { data } = await supabase
-                    .schema('sourcing')
-                    .from('asignaciones_feria')
-                    .select('id_feria, ferias!inner(*)')
-                    .eq('id_usuario', user.id)
-                    .eq('ferias.estado_activo', true);
-
-                if (data && data.length > 0) {
-                    const mapeadas = data.map(d => Array.isArray(d.ferias) ? d.ferias[0] : d.ferias) as unknown as Fair[];
-
-                    const hoy = new Date();
-                    hoy.setHours(0, 0, 0, 0);
-
-                    const feriasVigentes = mapeadas.filter(feria => {
-                        const fechaEvaluacion = feria.fecha_fin ? new Date(feria.fecha_fin) : new Date(feria.fecha_inicio);
-                        fechaEvaluacion.setHours(0, 0, 0, 0);
-                        return fechaEvaluacion >= hoy;
-                    });
-
-                    setFeriasAsignadas(feriasVigentes);
-
-                    if (feriasVigentes.length > 0) {
-                        setFeriaActiva(feriasVigentes[0]);
-                    } else {
-                        setFeriaActiva(null);
+                        if (data && data.length > 0) {
+                            const mapeadas = data.map(d => Array.isArray(d.ferias) ? d.ferias[0] : d.ferias) as unknown as Fair[];
+                            const hoy = new Date();
+                            hoy.setHours(0, 0, 0, 0);
+                            feriasVigentes = mapeadas.filter(feria => {
+                                const fechaEvaluacion = feria.fecha_fin ? new Date(feria.fecha_fin) : new Date(feria.fecha_inicio);
+                                fechaEvaluacion.setHours(0, 0, 0, 0);
+                                return fechaEvaluacion >= hoy;
+                            });
+                        }
                     }
+                } else {
+                    throw new Error("Offline mode");
                 }
             } catch (error) {
-                console.error(error);
+                // FALLBACK OFFLINE
+                const feriasLocales = await import("@/lib/offline-db").then(m => m.getCatalogoLocal('ferias'));
+                if (feriasLocales && Array.isArray(feriasLocales)) {
+                    feriasVigentes = feriasLocales as Fair[];
+                }
             } finally {
+                setFeriasAsignadas(feriasVigentes);
+                if (feriasVigentes.length > 0) {
+                    setFeriaActiva(feriasVigentes[0]);
+                } else {
+                    setFeriaActiva(null);
+                }
                 setCargandoFeria(false);
             }
         };

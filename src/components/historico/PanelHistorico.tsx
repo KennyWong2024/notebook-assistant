@@ -8,6 +8,8 @@ import BuscadorMagico from "@/components/ui/BuscadorMagico";
 import TarjetaHistorial from "@/components/historico/TarjetaHistorial";
 import ModalDetalleHistorial from "@/components/historico/ModalDetalleHistorial";
 import { getResumenFerias, getProductosPaginados } from "@/actions/productos";
+import { getAllLocals, getCatalogoLocal } from "@/lib/offline-db";
+import { AlertCircle } from "lucide-react";
 import ContenedorPagina from "@/components/ui/ContenedorPagina";
 
 type ResumenFeria = { feria: string; cantidad_productos: number };
@@ -21,16 +23,37 @@ export default function PanelHistorico() {
     const [feriaSeleccionada, setFeriaSeleccionada] = useState<string | null>(null);
     const [paginaActual, setPaginaActual] = useState(1);
     const [totalPaginas, setTotalPaginas] = useState(1);
+    const [isOfflineMode, setIsOfflineMode] = useState(false);
     const POR_PAGINA = 20;
 
     // 1. Cargar el resumen de ferias al inicio
     useEffect(() => {
         const fetchFerias = async () => {
             setLoading(true);
-            const res = await getResumenFerias();
-            if (res.success && res.data) {
-                setResumenFerias(res.data);
+            setIsOfflineMode(false);
+            if (navigator.onLine) {
+                try {
+                    const res = await getResumenFerias();
+                    if (res.success && res.data) {
+                        setResumenFerias(res.data);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.log("Fallback local Ferias");
+                }
             }
+            // Offline fallback
+            setIsOfflineMode(true);
+            try {
+                const locales = await getAllLocals('productos_recientes');
+                const counts: Record<string, number> = {};
+                locales.forEach(p => {
+                    // asumiremos 'ferias' array is syncCatalogLocal or available inside product? Wait products_recent doesn't have fair. But we can just sum by a generic "Feria Offline".
+                    counts['Historial Reciente (Offline)'] = (counts['Historial Reciente (Offline)'] || 0) + 1;
+                });
+                setResumenFerias(Object.keys(counts).map(key => ({ feria: key, cantidad_productos: counts[key] })));
+            } catch (err) {}
             setLoading(false);
         };
         fetchFerias();
@@ -45,12 +68,36 @@ export default function PanelHistorico() {
 
         const fetchProductos = async () => {
             setLoading(true);
-            const res = await getProductosPaginados(feriaSeleccionada, searchTerm, paginaActual, POR_PAGINA);
-
-            if (res.success && res.data) {
-                setProductos(res.data);
-                setTotalPaginas(res.totalPaginas || 1);
+            setIsOfflineMode(false);
+            if (navigator.onLine && feriaSeleccionada !== 'Historial Reciente (Offline)') {
+                try {
+                    const res = await getProductosPaginados(feriaSeleccionada, searchTerm, paginaActual, POR_PAGINA);
+                    if (res.success && res.data) {
+                        setProductos(res.data);
+                        setTotalPaginas(res.totalPaginas || 1);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (e) {}
             }
+            
+            setIsOfflineMode(true);
+            try {
+                const locales = await getAllLocals('productos_recientes');
+                let filtrados = locales;
+                if (searchTerm.trim() !== "") {
+                    const lowerTerm = searchTerm.toLowerCase();
+                    filtrados = locales.filter(p => 
+                        p.nombre_rapido?.toLowerCase().includes(lowerTerm) ||
+                        p.proveedor_nombre?.toLowerCase().includes(lowerTerm)
+                    );
+                }
+                const total = Math.ceil(filtrados.length / POR_PAGINA);
+                setTotalPaginas(total === 0 ? 1 : total);
+                
+                const startIndex = (paginaActual - 1) * POR_PAGINA;
+                setProductos(filtrados.slice(startIndex, startIndex + POR_PAGINA) as ViewHistorialProducto[]);
+            } catch (e) {}
             setLoading(false);
         };
 
@@ -84,6 +131,13 @@ export default function PanelHistorico() {
                         {feriaSeleccionada && !searchTerm ? `Explorando: ${feriaSeleccionada}` : 'Busca y revisa fichas técnicas.'}
                     </p>
                 </div>
+
+                {isOfflineMode && (
+                    <div className="flex items-center space-x-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-xl text-xs font-bold border border-yellow-200 shadow-sm animate-pulse mb-4 md:mb-0">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Modo Offline: Histórico limitado (14 días).</span>
+                    </div>
+                )}
 
                 <div className="w-full md:w-[400px]">
                     <BuscadorMagico
