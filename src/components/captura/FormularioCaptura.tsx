@@ -48,7 +48,6 @@ export default function FormularioCaptura() {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                // 1. Traer las ferias asignadas y activas en base de datos
                 const { data } = await supabase
                     .schema('sourcing')
                     .from('asignaciones_feria')
@@ -59,14 +58,13 @@ export default function FormularioCaptura() {
                 if (data && data.length > 0) {
                     const mapeadas = data.map(d => Array.isArray(d.ferias) ? d.ferias[0] : d.ferias) as unknown as Fair[];
 
-                    // 2. FILTRO TEMPORAL: Excluir las ferias cuya fecha_fin ya pasó
                     const hoy = new Date();
                     hoy.setHours(0, 0, 0, 0);
 
                     const feriasVigentes = mapeadas.filter(feria => {
                         const fechaEvaluacion = feria.fecha_fin ? new Date(feria.fecha_fin) : new Date(feria.fecha_inicio);
                         fechaEvaluacion.setHours(0, 0, 0, 0);
-                        return fechaEvaluacion >= hoy; // Solo dejamos las futuras o presentes
+                        return fechaEvaluacion >= hoy;
                     });
 
                     setFeriasAsignadas(feriasVigentes);
@@ -86,7 +84,6 @@ export default function FormularioCaptura() {
         fetchFerias();
     }, []);
 
-    // Funciones del array de productos
     const addProducto = () => setProductos([...productos, { tempId: Date.now(), nombre: "", precio: "", moneda: "USD", descripcion: "", prioridad: null, fotos: [] }]);
     const removeProducto = (id: number) => {
         if (productos.length === 1) return;
@@ -109,7 +106,6 @@ export default function FormularioCaptura() {
         }));
     };
 
-    // Manejo del cierre seguro
     const handleCerrar = () => {
         if (nombreProveedor || fotoTarjeta || productos[0].nombre || productos[0].fotos.length > 0) {
             if (window.confirm("¿Estás seguro de salir? Perderás los datos no guardados.")) {
@@ -122,17 +118,23 @@ export default function FormularioCaptura() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!nombreProveedor.trim()) return alert("El nombre del proveedor es obligatorio.");
+
         if (!feriaActiva) return alert("Debes tener una feria activa seleccionada para guardar.");
+
+        if (productos.length > 1) {
+            const faltanNombres = productos.some(p => !p.nombre.trim());
+            if (faltanNombres) {
+                return alert("Al capturar múltiples productos, es obligatorio asignarle un Nombre/Artículo a cada uno para poder diferenciarlos.");
+            }
+        }
 
         setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No hay sesión");
 
-            // 1. Comprimir fotos primero para aligerar IndexedDB
             const fotoComprimidaTarjeta = fotoTarjeta ? await comprimirImagen(fotoTarjeta) : undefined;
-            
+
             const standComprimidas: Blob[] = [];
             for (const f of fotosGenerales) {
                 standComprimidas.push(await comprimirImagen(f));
@@ -158,12 +160,16 @@ export default function FormularioCaptura() {
                 });
             }
 
-            // 2. Construir objeto local
+            if (productosOffline.length === 0) {
+                setLoading(false);
+                return alert("Debes capturar información de al menos un producto (foto, nombre o precio) para poder guardar el registro.");
+            }
+
             const idLocalCifrado = `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
             const prospectoOffline: Omit<ProspectoOffline, 'estado_subida' | 'intento'> = {
                 id_local: idLocalCifrado,
-                nombre_empresa: nombreProveedor.trim(),
+                nombre_empresa: nombreProveedor.trim() || 'Pendiente de definir',
                 email_contacto: correoProveedor.trim(),
                 id_feria: feriaActiva.id,
                 nombre_feria: feriaActiva.nombre,
@@ -175,7 +181,6 @@ export default function FormularioCaptura() {
                 timestamp: Date.now()
             };
 
-            // 3. Guardar en disco duro local (IndexedDB)
             await guardarProspectoLocal(prospectoOffline);
 
             setSuccess(true);
@@ -183,7 +188,7 @@ export default function FormularioCaptura() {
 
         } catch (err) {
             console.error(err);
-            alert("Error al guardar localmente en IndexedDB. Almacenamiento lleno?");
+            alert("Error al guardar localmente en IndexedDB. ¿Almacenamiento lleno?");
         } finally {
             setLoading(false);
         }
@@ -191,7 +196,6 @@ export default function FormularioCaptura() {
 
     if (cargandoFeria) return <div className="p-12 text-center font-bold text-gray-400 animate-pulse">Abriendo cuaderno...</div>;
 
-    // Si terminó de cargar y no hay ferias vigentes
     if (!cargandoFeria && feriasAsignadas.length === 0) {
         return (
             <div className="fixed inset-0 z-[100] bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
@@ -225,7 +229,10 @@ export default function FormularioCaptura() {
                     <CapturaTarjeta onCaptured={setFotoTarjeta} />
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Proveedor <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1 flex items-center space-x-1">
+                                <span>Proveedor</span>
+                                <span className="text-[10px] text-gray-300 normal-case font-medium">(Opcional)</span>
+                            </label>
                             <BuscadorProveedor value={nombreProveedor} onChange={setNombreProveedor} />
                         </div>
                         <div>
@@ -262,13 +269,12 @@ export default function FormularioCaptura() {
                 </div>
 
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-lg border-t border-gray-100 z-[110]">
-                    <button type="submit" disabled={loading || !nombreProveedor.trim() || !feriaActiva} className={`w-full max-w-md mx-auto py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all flex items-center justify-center space-x-3 ${success ? "bg-green-500 text-white" : !nombreProveedor.trim() ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-red-600 text-white active:scale-95 shadow-red-200"}`}>
+                    <button type="submit" disabled={loading || !feriaActiva} className={`w-full max-w-md mx-auto py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all flex items-center justify-center space-x-3 ${success ? "bg-green-500 text-white" : "bg-red-600 text-white active:scale-95 shadow-red-200"}`}>
                         {loading ? <Loader2 className="animate-spin w-6 h-6" /> : success ? <CheckCircle2 className="w-6 h-6" /> : <span>GUARDAR CAPTURA</span>}
                     </button>
                 </div>
             </form>
 
-            {/* MODAL SELECTOR DE FERIAS */}
             {showSelectorFeria && (
                 <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm flex items-end justify-center">
                     <div className="bg-white w-full max-w-md rounded-t-[2rem] p-6 pb-10 animate-in slide-in-from-bottom-8 duration-200">

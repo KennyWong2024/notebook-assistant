@@ -5,6 +5,7 @@ import { useEnriquecimiento } from "@/hooks/useEnriquecimiento";
 import { X, Loader2, Save, Package, Tags, Truck, CheckCircle2, Image as ImageIcon, Building2 } from "lucide-react";
 import CamaraWidget from "../captura/CamaraWidget";
 import { supabase } from "@/lib/supabase";
+import { limpiarProveedorHuerfano } from "@/actions/proveedores";
 
 type PanelProps = {
     idProducto: string | null;
@@ -114,25 +115,43 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
         if (!idProducto) return;
         setLocalError("");
 
-        // 1. Actualizamos el nombre del proveedor en su catálogo maestro
-        if (formData.id_proveedor && formData.proveedor_nombre.trim()) {
-            const { error: provError } = await supabase.schema('sourcing')
-                .from('proveedores')
-                .update({ nombre_empresa: formData.proveedor_nombre.trim() })
-                .eq('id', formData.id_proveedor);
+        const idProveedorOriginal = formData.id_proveedor;
+        let finalProviderId = formData.id_proveedor;
 
-            if (provError) {
-                if (provError.code === '23505') {
-                    setLocalError(`El proveedor "${formData.proveedor_nombre}" ya existe en el sistema.`);
-                } else {
-                    setLocalError("Error al actualizar el nombre del proveedor.");
+        // 1. Manejo seguro del Proveedor: Evitar sobreescribir globalmente ("Por definir" o errores).
+        // Se busca si existe un proveedor con ese nombre o se crea uno nuevo para reasignar este producto.
+        if (formData.proveedor_nombre.trim()) {
+            const provNameTrimmed = formData.proveedor_nombre.trim();
+            const { data: provExistente } = await supabase.schema('sourcing')
+                .from('proveedores')
+                .select('id')
+                .ilike('nombre_empresa', provNameTrimmed)
+                .maybeSingle();
+
+            if (provExistente) {
+                finalProviderId = provExistente.id;
+            } else {
+                const { data: userAuth } = await supabase.auth.getUser();
+                const { data: nuevoProv, error: errProvIn } = await supabase.schema('sourcing')
+                    .from('proveedores')
+                    .insert({
+                        nombre_empresa: provNameTrimmed,
+                        creado_por: userAuth.user?.id
+                    })
+                    .select('id')
+                    .single();
+
+                if (errProvIn) {
+                    setLocalError("Error al actualizar/crear el nuevo registro de proveedor.");
+                    return;
                 }
-                return;
+                finalProviderId = nuevoProv.id;
             }
         }
 
-        // 2. Guardamos el producto (Hook original)
-        const datosLimpios = {
+        // 2. Guardamos el producto (Hook original modificado)
+        const datosLimpios: any = {
+            id_proveedor: finalProviderId,
             nombre_rapido: formData.nombre_rapido.trim() || '',
             precio_referencia: formData.precio_referencia ? parseFloat(formData.precio_referencia) : undefined,
             moneda: formData.moneda,
@@ -153,6 +172,9 @@ export default function PanelEnriquecimiento({ idProducto, onClose, onSuccess }:
         );
 
         if (exito) {
+            if (idProveedorOriginal && finalProviderId !== idProveedorOriginal) {
+                limpiarProveedorHuerfano(idProveedorOriginal).catch(console.error);
+            }
             setSuccessMsg(true);
             setTimeout(() => {
                 setSuccessMsg(false);

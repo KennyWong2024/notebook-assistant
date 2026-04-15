@@ -1,9 +1,10 @@
 "use server"
 
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '../types/supabase'
 
 const getSupabaseAdmin = () => {
-    return createClient(
+    return createClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         { auth: { autoRefreshToken: false, persistSession: false } }
@@ -37,6 +38,54 @@ export async function getProveedoresPaginados(busqueda: string, pagina: number =
         const totalPaginas = Math.ceil(totalRegistros / porPagina);
 
         return { success: true, data, totalRegistros, totalPaginas };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function limpiarProveedorHuerfano(idProveedorViejo: string) {
+    if (!idProveedorViejo) return null;
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+
+        // Verificar si el proveedor todavia tiene productos colgados
+        const { count, error: countError } = await supabaseAdmin
+            .schema('sourcing')
+            .from('productos_prospecto')
+            .select('id', { count: 'exact', head: true })
+            .eq('id_proveedor', idProveedorViejo);
+
+        if (countError) throw countError;
+
+        // Si ya no tiene productos, verificamos sus caracteristicas
+        if (count === 0) {
+            const { data: prov, error: provError } = await supabaseAdmin
+                .schema('sourcing')
+                .from('proveedores')
+                .select('nombre_empresa, contacto_principal, email_contacto')
+                .eq('id', idProveedorViejo)
+                .single();
+            
+            if (provError && provError.code !== 'PGRST116') throw provError;
+
+            // Logica heurística: Si era "Por definir" O si ni siquiera tenía un contacto o email real
+            const isPorDefinir = prov?.nombre_empresa?.trim().toLowerCase() === 'por definir' || prov?.nombre_empresa?.trim().toLowerCase().startsWith('s/n');
+            const hasNoContact = !prov?.contacto_principal && !prov?.email_contacto;
+
+            if (prov && (isPorDefinir || hasNoContact)) {
+                // Procedemos a eliminarlo (Las llaves foraneas asumen CASCADE en activos e interacciones, si no fallaría, pero es seguro intentar)
+                await supabaseAdmin
+                    .schema('sourcing')
+                    .from('proveedores')
+                    .delete()
+                    .eq('id', idProveedorViejo);
+                
+                return { success: true, action: 'deleted' };
+            }
+        }
+        return { success: true, action: 'kept' };
+
     } catch (error: any) {
         return { success: false, error: error.message };
     }

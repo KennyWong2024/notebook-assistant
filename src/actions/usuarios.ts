@@ -1,9 +1,11 @@
 "use server"
 
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '../types/supabase'
+import { z } from 'zod'
 
 const getSupabaseAdmin = () => {
-    return createClient(
+    return createClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         {
@@ -15,13 +17,34 @@ const getSupabaseAdmin = () => {
     );
 };
 
-export async function crearUsuario(formData: FormData) {
-    const email = formData.get("email") as string
-    const nombre = formData.get("nombre") as string
-    const rol = formData.get("rol") as string
-    const password = formData.get("password") as string
+const UserSchema = z.object({
+    email: z.string().email("Correo inválido"),
+    nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+    rol: z.union([
+        z.literal('director'),
+        z.literal('gerente'),
+        z.literal('comprador'),
+        z.literal('it')
+    ]),
+    password: z.string().min(6, "La contraseña requiere min 6 caracteres")
+});
 
+export async function crearUsuario(formData: FormData) {
     try {
+        const payload = {
+            email: formData.get("email") as string,
+            nombre: formData.get("nombre") as string,
+            rol: formData.get("rol") as string,
+            password: formData.get("password") as string
+        };
+
+        const validated = UserSchema.safeParse(payload);
+        if (!validated.success) {
+            throw new Error(`Validación fallida: ${validated.error.issues.map(e => e.message).join(', ')}`);
+        }
+
+        const { email, nombre, rol, password } = validated.data;
+        
         const supabaseAdmin = getSupabaseAdmin();
 
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({

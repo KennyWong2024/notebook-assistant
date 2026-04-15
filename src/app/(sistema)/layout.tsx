@@ -131,7 +131,7 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
                 <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 flex-shrink-0 relative z-20">
                     <nav className="flex-1 p-4 space-y-2 overflow-y-auto mt-2">
                         <Link href="/dashboard" className={getSidebarClass("/dashboard")}>
-                            <LayoutDashboard className="w-5 h-5" /> <span>Pendientes</span>
+                            <LayoutDashboard className="w-5 h-5" /> <span>Inicio</span>
                         </Link>
                         <Link href="/analitica" className={getSidebarClass("/analitica")}>
                             <PieChart className="w-5 h-5" /> <span>Analítica y Reportes</span>
@@ -170,7 +170,7 @@ export default function SistemaLayout({ children }: { children: React.ReactNode 
 
                 <Link href="/dashboard" className={`w-1/4 ${getMobileClass("/dashboard")}`}>
                     <LayoutDashboard className="w-6 h-6" />
-                    <span className="text-[9px] font-bold mt-1">Pendientes</span>
+                    <span className="text-[9px] font-bold mt-1">Inicio</span>
                 </Link>
 
                 <Link href="/historico" className={`w-1/4 ${getMobileClass("/historico")}`}>

@@ -30,12 +30,12 @@ export default function SyncEngine() {
                 // 1. Proveedor
                 let providerId;
                 const provNameTrimmed = prospecto.nombre_empresa;
-                const { data: provExistente, error: errProvSearch } = await supabase.schema('sourcing').from('proveedores').select('id').ilike('nombre_empresa', provNameTrimmed).maybeSingle();
+                const { data: provExistentes, error: errProvSearch } = await supabase.schema('sourcing').from('proveedores').select('id').ilike('nombre_empresa', provNameTrimmed).limit(1);
                 
-                if (errProvSearch && errProvSearch.code !== 'PGRST116') throw errProvSearch; // abort on timeout
+                if (errProvSearch) throw errProvSearch; // abort on timeout
 
-                if (provExistente) {
-                    providerId = provExistente.id;
+                if (provExistentes && provExistentes.length > 0) {
+                    providerId = provExistentes[0].id;
                 } else {
                     const { data: nuevoProv, error: errProvIn } = await supabase.schema('sourcing').from('proveedores').insert({
                         nombre_empresa: provNameTrimmed,

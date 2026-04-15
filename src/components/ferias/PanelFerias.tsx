@@ -155,7 +155,7 @@ export default function PanelFerias() {
                 {(userRole === 'it' || userRole === 'director') && (
                     <button
                         onClick={() => { setFeriaEditando(null); setModalError(""); setSuccessMessage(""); setIsModalOpen(true); }}
-                        className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-2xl font-bold flex justify-center items-center space-x-2 transition-all shadow-lg shadow-red-100 active:scale-95"
+                        className="hidden md:flex w-full md:w-auto bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-2xl font-bold justify-center items-center space-x-2 transition-all shadow-lg shadow-red-100 active:scale-95"
                     >
                         <Plus className="w-5 h-5" />
                         <span>Nueva Feria</span>
