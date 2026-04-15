@@ -13,8 +13,8 @@ export function useEnriquecimiento() {
         try {
             if (navigator.onLine) {
                 const [deptRes, catRes] = await Promise.all([
-                    supabase.schema('sourcing').from('departamentos').select('*').eq('estado_activo', true),
-                    supabase.schema('sourcing').from('categorias').select('*').eq('estado_activo', true)
+                    supabase.schema('sourcing').from('catalogo_departamentos').select('*').eq('estado_activo', true),
+                    supabase.schema('sourcing').from('catalogo_categorias').select('*').eq('estado_activo', true)
                 ]);
 
                 if (!deptRes.error && !catRes.error) {

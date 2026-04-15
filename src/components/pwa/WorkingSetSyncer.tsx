@@ -17,10 +17,10 @@ export default function WorkingSetSyncer() {
                 setStatus('syncing');
 
                 // 1. Catálogos (Departamentos y Categorías)
-                const { data: deptos } = await supabase.schema('sourcing').from('departamentos').select('*');
+                const { data: deptos } = await supabase.schema('sourcing').from('catalogo_departamentos').select('*');
                 if (deptos) await syncCatalogoLocal('departamentos', deptos);
 
-                const { data: categorias } = await supabase.schema('sourcing').from('categorias').select('*');
+                const { data: categorias } = await supabase.schema('sourcing').from('catalogo_categorias').select('*');
                 if (categorias) await syncCatalogoLocal('categorias', categorias);
 
                 const { data: ferias } = await supabase.schema('sourcing').from('ferias').select('*');
