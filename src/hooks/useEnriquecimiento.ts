@@ -98,8 +98,15 @@ export function useEnriquecimiento() {
 
             if (fotosNuevas.length > 0) {
                 for (const [idx, f] of fotosNuevas.entries()) {
+                    // Validar que el archivo no esté vacío (protección iOS)
+                    if (!f || f.size === 0) {
+                        console.warn(`useEnriquecimiento: Foto idx=${idx} está vacía, omitiendo.`);
+                        continue;
+                    }
                     const path = `${idProducto}/p_enriquecido_${Date.now()}_${idx}.jpg`;
-                    await supabase.storage.from('activos_feria').upload(path, f);
+                    await supabase.storage.from('activos_feria').upload(path, f, {
+                        contentType: 'image/jpeg'
+                    });
                     const { data: url } = supabase.storage.from('activos_feria').getPublicUrl(path);
 
                     await supabase.schema('sourcing').from('activos_adjuntos').insert({

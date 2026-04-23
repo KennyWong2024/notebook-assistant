@@ -6,6 +6,23 @@ import { obtenerProspectosPendientes, eliminarProspectoLocal, marcarErrorProspec
 import { generarCodigoTrazabilidad } from "@/lib/image-utils";
 import { Cloud, CloudOff, CloudUpload, Loader2 } from "lucide-react";
 
+/**
+ * Asegura que un Blob tenga tipo MIME correcto antes de subirlo a Supabase Storage.
+ * En iOS Safari, los Blobs almacenados en IndexedDB pueden perder su MIME type,
+ * lo que causa uploads de 0 bytes o con Content-Type incorrecto.
+ */
+function asegurarBlobValido(blob: Blob): Blob {
+    if (!blob || blob.size === 0) {
+        console.warn('SyncEngine: Blob vacío detectado, se omitirá upload.');
+        return blob;
+    }
+    // Si no tiene tipo o tiene tipo genérico, forzar image/jpeg
+    if (!blob.type || blob.type === 'application/octet-stream') {
+        return new Blob([blob], { type: 'image/jpeg' });
+    }
+    return blob;
+}
+
 export default function SyncEngine() {
     const [pendientesCount, setPendientesCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -56,12 +73,17 @@ export default function SyncEngine() {
                 });
                 if (errInt) throw errInt;
 
-                if (prospecto.foto_tarjeta) {
-                    const path = `proveedores/${providerId}/tarjeta_${Date.now()}.jpg`;
-                    const { error: errUp } = await supabase.storage.from('activos_feria').upload(path, prospecto.foto_tarjeta);
-                    if (errUp) throw errUp;
-                    const { data: url } = supabase.storage.from('activos_feria').getPublicUrl(path);
-                    await supabase.schema('sourcing').from('activos_adjuntos').insert({ url_storage: url.publicUrl, id_tipo_activo: 1, creado_por: prospecto.creado_por, id_proveedor: providerId });
+                if (prospecto.foto_tarjeta && prospecto.foto_tarjeta.size > 0) {
+                    const blobTarjeta = asegurarBlobValido(prospecto.foto_tarjeta);
+                    if (blobTarjeta.size > 0) {
+                        const path = `proveedores/${providerId}/tarjeta_${Date.now()}.jpg`;
+                        const { error: errUp } = await supabase.storage.from('activos_feria').upload(path, blobTarjeta, {
+                            contentType: 'image/jpeg'
+                        });
+                        if (errUp) throw errUp;
+                        const { data: url } = supabase.storage.from('activos_feria').getPublicUrl(path);
+                        await supabase.schema('sourcing').from('activos_adjuntos').insert({ url_storage: url.publicUrl, id_tipo_activo: 1, creado_por: prospecto.creado_por, id_proveedor: providerId });
+                    }
                 }
 
                 // 3. Productos (Productos Offline Array)
@@ -84,8 +106,15 @@ export default function SyncEngine() {
                     if (errProd) throw errProd;
 
                     for (const [idx, f] of prod.fotos.entries()) {
+                        const blobFoto = asegurarBlobValido(f);
+                        if (blobFoto.size === 0) {
+                            console.warn(`SyncEngine: Foto de producto idx=${idx} está vacía, omitiendo.`);
+                            continue;
+                        }
                         const path = `${dbProd.id}/p_${Date.now()}_${idx}.jpg`;
-                        const { error: errFUp } = await supabase.storage.from('activos_feria').upload(path, f);
+                        const { error: errFUp } = await supabase.storage.from('activos_feria').upload(path, blobFoto, {
+                            contentType: 'image/jpeg'
+                        });
                         if (errFUp) throw errFUp;
                         const { data: url } = supabase.storage.from('activos_feria').getPublicUrl(path);
                         await supabase.schema('sourcing').from('activos_adjuntos').insert({ url_storage: url.publicUrl, id_tipo_activo: 2, creado_por: prospecto.creado_por, id_producto: dbProd.id });
@@ -94,8 +123,15 @@ export default function SyncEngine() {
 
                 // 4. Stand General
                 for (const [index, foto] of prospecto.fotos_stand.entries()) {
+                    const blobStand = asegurarBlobValido(foto);
+                    if (blobStand.size === 0) {
+                        console.warn(`SyncEngine: Foto de stand idx=${index} está vacía, omitiendo.`);
+                        continue;
+                    }
                     const path = `ferias/${prospecto.id_feria}/stand_${providerId}_${Date.now()}_${index}.jpg`;
-                    const { error: errStandUp } = await supabase.storage.from('activos_feria').upload(path, foto);
+                    const { error: errStandUp } = await supabase.storage.from('activos_feria').upload(path, blobStand, {
+                        contentType: 'image/jpeg'
+                    });
                     if (errStandUp) throw errStandUp;
                     const { data: urlGen } = supabase.storage.from('activos_feria').getPublicUrl(path);
                     await supabase.schema('sourcing').from('activos_adjuntos').insert({

@@ -9,7 +9,6 @@ import CapturaTarjeta from "./CapturaTarjeta";
 import BuscadorProveedor from "./BuscadorProveedor";
 import GaleriaMiniaturas from "./GaleriaMiniaturas";
 import TarjetaProducto from "./TarjetaProducto";
-import { comprimirImagen } from "@/lib/image-utils";
 import { Fair } from "@/types/database";
 import { guardarProspectoLocal, ProspectoOffline, ProductoOffline } from "@/lib/offline-db";
 
@@ -137,22 +136,16 @@ export default function FormularioCaptura() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No hay sesión");
 
-            const fotoComprimidaTarjeta = fotoTarjeta ? await comprimirImagen(fotoTarjeta) : undefined;
+            // Las fotos ya vienen comprimidas de CamaraWidget/CapturaTarjeta.
+            // NO re-comprimir: en iOS Safari, la doble compresión produce Blobs vacíos (0 bytes).
+            const fotoComprimidaTarjeta = fotoTarjeta || undefined;
 
-            const standComprimidas: Blob[] = [];
-            for (const f of fotosGenerales) {
-                standComprimidas.push(await comprimirImagen(f));
-            }
+            const standComprimidas: Blob[] = [...fotosGenerales];
 
             const productosOffline: ProductoOffline[] = [];
             for (const prod of productos) {
                 const tieneData = prod.nombre.trim() || prod.precio || prod.fotos.length > 0 || prod.prioridad;
                 if (!tieneData) continue;
-
-                const fotosProdComprimidas: Blob[] = [];
-                for (const pf of prod.fotos) {
-                    fotosProdComprimidas.push(await comprimirImagen(pf));
-                }
 
                 productosOffline.push({
                     nombre_rapido: prod.nombre.trim() || '',
@@ -160,7 +153,7 @@ export default function FormularioCaptura() {
                     moneda: prod.moneda,
                     descripcion_libre: prod.descripcion.trim() || undefined,
                     prioridad: prod.prioridad || undefined,
-                    fotos: fotosProdComprimidas
+                    fotos: prod.fotos // Ya comprimidas por CamaraWidget
                 });
             }
 
